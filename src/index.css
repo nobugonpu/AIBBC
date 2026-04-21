@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background-color: #e5e7eb;
+  border: 1px solid #e5e7eb;
+}
+
+.calendar-header {
+  background-color: #f9fafb;
+  padding: 12px 8px;
+  text-align: center;
+  font-weight: 600;
+  color: #374151;
+  font-size: 14px;
+}
+
+.calendar-day {
+  background-color: white;
+  min-height: 120px;
+  padding: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.calendar-day.empty {
+  background-color: #f9fafb;
+}
+
+.calendar-day.today {
+  background-color: #eff6ff;
+  border: 2px solid #3b82f6;
+}
+
+.calendar-day.weekend {
+  background-color: #fef2f2;
+}
+
+.calendar-day-number {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.holiday-badge {
+  background-color: #ef4444;
+  color: white;
+  font-size: 10px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.calendar-treatments {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.treatment-item {
+  padding: 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.treatment-pluvicto {
+  background-color: #dbeafe;
+  border-left: 3px solid #3b82f6;
+}
+
+.treatment-pluvicto-admission {
+  background-color: #fce7f3;
+  border-left: 3px solid #ec4899;
+}
+
+.treatment-pluvicto-discharge {
+  background-color: #ddd6fe;
+  border-left: 3px solid #8b5cf6;
+}
+
+.treatment-lutetium {
+  background-color: #dcfce7;
+  border-left: 3px solid #22c55e;
+}
+
+.treatment-lutetium-admission {
+  background-color: #fef3c7;
+  border-left: 3px solid #f59e0b;
+}
+
+.treatment-lutetium-discharge {
+  background-color: #e0e7ff;
+  border-left: 3px solid #6366f1;
+}
+
+.treatment-patient {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.treatment-type {
+  color: #6b7280;
+  font-size: 10px;
+}
+
+.treatment-cycle {
+  color: #6b7280;
+  font-size: 10px;
+}
+
+.print-title {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 15mm;
+  }
+
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-title {
+    display: block;
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #1f2937;
+  }
+
+  .calendar-grid {
+    page-break-inside: avoid;
+  }
+
+  .calendar-day {
+    min-height: 100px;
+    page-break-inside: avoid;
+  }
+
+  .treatment-item {
+    page-break-inside: avoid;
+  }
+}
