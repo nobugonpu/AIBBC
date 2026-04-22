@@ -1,0 +1,29 @@
+For all designs I ask you to make, have them be beautiful, not cookie cutter. Make webpages that are fully featured and worthy for production.
+
+By default, this template supports JSX syntax with Tailwind CSS classes, React hooks, and Lucide React for icons. Do not install other packages for UI themes, icons, etc unless absolutely necessary or I request them.
+
+Use icons from lucide-react for logos.
+アプリをできるだけモジュール化してテスト可能に保ちましょう。ページネーション、再利用可能なコンポーネント、レイアウト、サービス、フック、ユーティリティ/ヘルパー、定数/設定を活用して、コードをモジュール化し効率的に保つためのベストプラクティスを使用してください。可能な限り、すべてのファイルを400行未満に保つよう心がけてください。私の明示的な許可なしに、APIコールに使用されるモデル名を変更または修正しないでください。私が提供するモデル名のみを使用してください。あなたの知識ベースは古いため、あなた自身が選択したモデル名は不正確であり、プログラムの誤動作や望ましくないAPI使用料が発生する可能性があります。私が提供するモデル名は、あなたの知識ベースに表示されていなくても正しいものです。不明な点がある場合は、私に質問してください。APIキーが提供された場合は、適切なセキュリティのために.envファイルに保存してください。コード修正がデータベースに関連する場合は、以下を確認してください：
+
+Supabaseが適切に機能するために必要なすべてのポリシーが必要に応じて作成または修正されていること
+
+認証/認可の問題が適切に対処されていること
+
+変更をサポートするために必要に応じてデータベース（テーブル、バケットなど）が修正されていること
+Do not change the model names specified for ChatGPT or any other API calls without express permission from me. Only use the model names/numbers that I have provided. Your knowledge base is out of date and you have a tendency to insert out of date or suboptimal model names into API requests. Changing API model names will cause our application to break and to not function properly..
+
+Whenever any API keys are provided, store them in the .env file for proper security.Unless of course they are being accessed through and edge function, in which case I will store them in the Supabase edge function secrets.
+
+Whenever code modification is related to the database (Supabase) in anyway, make sure that:
+
+All RLS and other policies necessary for Supabase to function properly have been created or modified as needed
+
+Any authentication issues are addressed, and
+
+The database (tables, buckets, etc) itself is modified as necessary to support the code modifications.
+
+Keep the application modular by using components, layouts, services, hooks, utilities, and the like in accordance with best practices.
+
+Avoid having individual files go over 400 lines of code as this can lead to code breakage and inefficiencies in trying to modify or maintain our code.
+
+Use diffs whenever appropriate to avoid excess code rewriting.
