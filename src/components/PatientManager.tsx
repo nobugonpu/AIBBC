@@ -8,36 +8,7 @@ import { PatientList } from './patient/PatientList';
 import { OccupancyCalendar } from './patient/OccupancyCalendar';
 import { OccupancyTimeline } from './patient/OccupancyTimeline';
 import { printPatientTimeline } from '../utils/printPatientTimeline';
-
-interface Patient {
-  id: string;
-  patient_name: string;
-  treatment_type: 'lu-psma' | 'lutetium';
-  start_date: string;
-  cycles_planned: number;
-  cycles_completed: number;
-  created_at: string;
-}
-
-interface Cycle {
-  id: string;
-  patient_id: string;
-  cycle_number: number;
-  scheduled_date: string;
-  admission_date: string;
-  discharge_date: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
-}
-
-interface OccupiedSlot {
-  date: string;
-  patientName: string;
-  treatmentType: string;
-  cycleNumber: number;
-  isAdmission?: boolean;
-  isDischarge?: boolean;
-  isTreatmentDay?: boolean;
-}
+import type { Patient, Cycle, OccupiedSlot, TreatmentInfoMap } from '../shared/contracts/patient';
 
 function PatientManager() {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -53,7 +24,7 @@ function PatientManager() {
   const [occupancyView, setOccupancyView] = useState<'calendar' | 'timeline'>('calendar');
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  const TREATMENT_INFO = {
+  const TREATMENT_INFO: TreatmentInfoMap = {
     'lu-psma': {
       name: 'プルヴィクト（Lu-PSMA-617）',
       stayDays: 4,

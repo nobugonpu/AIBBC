@@ -1,24 +1,4 @@
-interface Patient {
-  patient_name: string;
-  start_date: string;
-  cycles_planned: number;
-  cycles_completed: number;
-}
-
-interface Cycle {
-  cycle_number: number;
-  admission_date: string;
-  scheduled_date: string;
-  discharge_date: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
-}
-
-interface TreatmentInfo {
-  name: string;
-  stayDays: number;
-  intervalDays: number;
-  color: string;
-}
+import type { Patient, Cycle, TreatmentInfo } from '../shared/contracts/patient';
 
 export function printPatientTimeline(patient: Patient, cycles: Cycle[], info: TreatmentInfo) {
   const printWindow = window.open('', '_blank');

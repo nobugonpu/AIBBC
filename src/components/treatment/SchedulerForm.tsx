@@ -1,6 +1,5 @@
 import { Plus, Target } from 'lucide-react';
-
-type OptimizationObjective = 'maximize_total' | 'maximize_lupsma' | 'minimize_unused' | 'exact_capacity';
+import type { OptimizationObjective } from '../../shared/contracts/scheduler';
 
 interface SchedulerFormProps {
   totalDays: string;

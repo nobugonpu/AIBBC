@@ -1,26 +1,10 @@
 import { Clock, Printer, Trash2 } from 'lucide-react';
-
-interface Patient {
-  id: string;
-  patient_name: string;
-  treatment_type: 'lu-psma' | 'lutetium';
-  start_date: string;
-  cycles_planned: number;
-  cycles_completed: number;
-}
-
-interface Cycle {
-  id: string;
-  patient_id: string;
-  cycle_number: number;
-  scheduled_date: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
-}
+import type { Patient, Cycle, TreatmentInfoMap } from '../../shared/contracts/patient';
 
 interface PatientListProps {
   patients: Patient[];
   cycles: Cycle[];
-  treatmentInfo: any;
+  treatmentInfo: TreatmentInfoMap;
   onDelete: (id: string) => void;
   onPrint: (id: string) => void;
 }

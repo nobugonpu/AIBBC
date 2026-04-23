@@ -1,24 +1,5 @@
 import { CheckCircle, AlertCircle, Save, Download } from 'lucide-react';
-
-interface TreatmentEvent {
-  type: 'lu-psma' | 'lutetium';
-  startDay: number;
-  endDay: number;
-  cycleNumber: number;
-  weekNumber: number;
-}
-
-interface OptimalPattern {
-  luPsmaCount: number;
-  lutetiumCount: number;
-  totalDaysUsed: number;
-  unusedDays: number;
-  totalTreatments: number;
-  schedule: TreatmentEvent[];
-  weeklyCapacitySatisfied: boolean;
-  minPatientsLuPsma: number;
-  minPatientsLutetium: number;
-}
+import type { OptimalPattern } from '../../shared/contracts/scheduler';
 
 interface OptimalPatternResultProps {
   pattern: OptimalPattern;

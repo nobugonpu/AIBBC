@@ -1,15 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { isHoliday as checkIsHoliday } from '../../utils/holidays';
-
-interface OccupiedSlot {
-  date: string;
-  patientName: string;
-  treatmentType: string;
-  cycleNumber: number;
-  isAdmission?: boolean;
-  isDischarge?: boolean;
-  isTreatmentDay?: boolean;
-}
+import type { OccupiedSlot } from '../../shared/contracts/patient';
 
 interface OccupancyCalendarProps {
   currentMonth: Date;

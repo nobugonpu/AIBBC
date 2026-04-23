@@ -1,16 +1,17 @@
 import { Plus } from 'lucide-react';
+import type { TreatmentType, TreatmentInfoMap } from '../../shared/contracts/patient';
 
 interface PatientFormProps {
   newPatient: {
     name: string;
-    treatmentType: 'lu-psma' | 'lutetium';
+    treatmentType: TreatmentType;
     startDate: string;
     cyclesPlanned: number;
   };
   setNewPatient: (patient: any) => void;
   onAdd: () => void;
   loading: boolean;
-  treatmentInfo: any;
+  treatmentInfo: TreatmentInfoMap;
   setMessage: (message: { type: 'success' | 'error'; text: string } | null) => void;
 }
 
