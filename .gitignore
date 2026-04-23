@@ -5,6 +5,9 @@ node_modules/
 dist/
 dist-ssr/
 
+# Tauri / Rust
+src-tauri/target/
+
 # environment
 .env
 .env.local
