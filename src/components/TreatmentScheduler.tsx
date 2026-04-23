@@ -4,42 +4,7 @@ import { supabase } from '../lib/supabase';
 import { SchedulerForm } from './treatment/SchedulerForm';
 import { OptimalPatternResult } from './treatment/OptimalPatternResult';
 import { SavedSchedulesList } from './treatment/SavedSchedulesList';
-
-interface TreatmentEvent {
-  type: 'lu-psma' | 'lutetium';
-  startDay: number;
-  endDay: number;
-  cycleNumber: number;
-  weekNumber: number;
-}
-
-interface OptimalPattern {
-  luPsmaCount: number;
-  lutetiumCount: number;
-  totalDaysUsed: number;
-  unusedDays: number;
-  totalTreatments: number;
-  schedule: TreatmentEvent[];
-  isValid: boolean;
-  weeklyCapacitySatisfied: boolean;
-  minPatientsLuPsma: number;
-  minPatientsLutetium: number;
-  score: number;
-}
-
-interface SavedSchedule {
-  id: string;
-  schedule_name: string;
-  total_days_available: number;
-  period_days: number;
-  lu_psma_count: number;
-  lutetium_count: number;
-  total_days_used: number;
-  schedule_data: TreatmentEvent[];
-  created_at: string;
-}
-
-type OptimizationObjective = 'maximize_total' | 'maximize_lupsma' | 'minimize_unused' | 'exact_capacity';
+import type { TreatmentEvent, OptimalPattern, SavedSchedule, OptimizationObjective } from '../shared/contracts/scheduler';
 
 function TreatmentScheduler() {
   const [totalDays, setTotalDays] = useState<string>('13');

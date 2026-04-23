@@ -1,33 +1,12 @@
 import { isWeekend, isBusinessDay, formatDateWithDayOfWeek } from '../../utils/dateHelpers';
 import { isHoliday as checkIsHoliday } from '../../utils/holidays';
-
-interface Patient {
-  id: string;
-  patient_name: string;
-  treatment_type: 'lu-psma' | 'lutetium';
-}
-
-interface Cycle {
-  id: string;
-  patient_id: string;
-  cycle_number: number;
-  admission_date: string;
-  discharge_date: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
-}
-
-interface OccupiedSlot {
-  date: string;
-  patientName: string;
-  treatmentType: string;
-  cycleNumber: number;
-}
+import type { Patient, Cycle, OccupiedSlot, TreatmentInfoMap } from '../../shared/contracts/patient';
 
 interface OccupancyTimelineProps {
   patients: Patient[];
   cycles: Cycle[];
   occupiedSlots: OccupiedSlot[];
-  treatmentInfo: any;
+  treatmentInfo: TreatmentInfoMap;
 }
 
 export function OccupancyTimeline({ patients, cycles, occupiedSlots, treatmentInfo }: OccupancyTimelineProps) {

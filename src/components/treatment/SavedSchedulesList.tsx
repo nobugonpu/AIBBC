@@ -1,16 +1,5 @@
 import { Trash2 } from 'lucide-react';
-
-interface SavedSchedule {
-  id: string;
-  schedule_name: string;
-  total_days_available: number;
-  period_days: number;
-  lu_psma_count: number;
-  lutetium_count: number;
-  total_days_used: number;
-  schedule_data: any[];
-  created_at: string;
-}
+import type { SavedSchedule } from '../../shared/contracts/scheduler';
 
 interface SavedSchedulesListProps {
   schedules: SavedSchedule[];
