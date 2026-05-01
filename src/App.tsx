@@ -27,6 +27,8 @@ function App() {
   const [guestPage, setGuestPage] = useState<'treatment' | 'patients'>('treatment');
 
   useEffect(() => {
+    if (!supabase) return;
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
@@ -41,6 +43,7 @@ function App() {
   }, []);
 
   const handleSignOut = async () => {
+    if (!supabase) return;
     await supabase.auth.signOut();
   };
 
@@ -55,6 +58,7 @@ function App() {
   };
 
   const generatePromptForMedia = async (imageData: string, userDesc: string = '') => {
+    if (!supabase) return;
     try {
       const { data: sessionData } = await supabase.auth.getSession();
 
@@ -170,7 +174,7 @@ function App() {
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !session?.user) return;
+    if (!selectedFile || !session?.user || !supabase) return;
 
     try {
       setUploading(true);
@@ -292,6 +296,15 @@ function App() {
       setUploading(false);
     }
   };
+
+  if (!supabase) {
+    return (
+      <GuestView
+        guestPage={guestPage}
+        onGuestPageChange={setGuestPage}
+      />
+    );
+  }
 
   if (!session) {
     if (showAuth) {

@@ -36,6 +36,7 @@ export default function Gallery() {
   }, [currentPage]);
 
   const loadMedia = async () => {
+    if (!supabase) { setLoading(false); return; }
     try {
       setLoading(true);
 
@@ -85,6 +86,7 @@ export default function Gallery() {
   };
 
   const generateImagePrompt = async (item: MediaItem) => {
+    if (!supabase) return;
     try {
       setGeneratingPrompt(item.id);
 

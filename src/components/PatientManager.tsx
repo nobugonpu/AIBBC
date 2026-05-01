@@ -49,6 +49,7 @@ function PatientManager() {
   }, []);
 
   const loadPatients = async () => {
+    if (!supabase) return;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -66,6 +67,7 @@ function PatientManager() {
   };
 
   const loadCycles = async () => {
+    if (!supabase) return;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -235,6 +237,7 @@ function PatientManager() {
   };
 
   const addPatient = async () => {
+    if (!supabase) return;
     if (!newPatient.name.trim()) {
       setMessage({ type: 'error', text: '患者名を入力してください' });
       return;

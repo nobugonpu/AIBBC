@@ -25,6 +25,7 @@ function TreatmentScheduler() {
   }, []);
 
   const loadSavedSchedules = async () => {
+    if (!supabase) return;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -157,6 +158,7 @@ function TreatmentScheduler() {
   };
 
   const saveSchedule = async () => {
+    if (!supabase) return;
     if (!bestPattern || !scheduleName.trim()) {
       setMessage({ type: 'error', text: 'スケジュール名を入力してください' });
       return;
