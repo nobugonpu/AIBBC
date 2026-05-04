@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, AlertCircle, CheckCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { invoke } from '@tauri-apps/api/core';
 import { SchedulerForm } from './treatment/SchedulerForm';
 import { OptimalPatternResult } from './treatment/OptimalPatternResult';
 import { SavedSchedulesList } from './treatment/SavedSchedulesList';
@@ -25,18 +25,9 @@ function TreatmentScheduler() {
   }, []);
 
   const loadSavedSchedules = async () => {
-    if (!supabase) return;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('treatment_schedules')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setSavedSchedules(data || []);
+      const data = await invoke<SavedSchedule[]>('get_schedules');
+      setSavedSchedules(data);
     } catch (error) {
       console.error('Error loading schedules:', error);
     }
@@ -158,7 +149,6 @@ function TreatmentScheduler() {
   };
 
   const saveSchedule = async () => {
-    if (!supabase) return;
     if (!bestPattern || !scheduleName.trim()) {
       setMessage({ type: 'error', text: 'スケジュール名を入力してください' });
       return;
@@ -166,30 +156,22 @@ function TreatmentScheduler() {
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('ログインが必要です');
-
-      const { error } = await supabase
-        .from('treatment_schedules')
-        .insert({
-          user_id: user.id,
-          schedule_name: scheduleName,
-          total_days_available: parseInt(totalDays),
-          period_days: parseInt(periodMonths) * 30,
-          lu_psma_count: bestPattern.luPsmaCount,
-          lutetium_count: bestPattern.lutetiumCount,
-          total_days_used: bestPattern.totalDaysUsed,
-          schedule_data: bestPattern.schedule
-        });
-
-      if (error) throw error;
+      await invoke('save_schedule', {
+        scheduleName,
+        totalDaysAvailable: parseInt(totalDays),
+        periodDays: parseInt(periodMonths) * 30,
+        luPsmaCount: bestPattern.luPsmaCount,
+        lutetiumCount: bestPattern.lutetiumCount,
+        totalDaysUsed: bestPattern.totalDaysUsed,
+        scheduleData: bestPattern.schedule,
+      });
 
       setMessage({ type: 'success', text: 'スケジュールを保存しました' });
       setScheduleName('');
       await loadSavedSchedules();
     } catch (error) {
       console.error('Error saving schedule:', error);
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'スケジュールの保存に失敗しました' });
+      setMessage({ type: 'error', text: typeof error === 'string' ? error : 'スケジュールの保存に失敗しました' });
     } finally {
       setLoading(false);
     }
@@ -199,13 +181,7 @@ function TreatmentScheduler() {
     if (!confirm('このスケジュールを削除してもよろしいですか？')) return;
 
     try {
-      const { error } = await supabase
-        .from('treatment_schedules')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
+      await invoke('delete_schedule', { id });
       setMessage({ type: 'success', text: 'スケジュールを削除しました' });
       await loadSavedSchedules();
     } catch (error) {

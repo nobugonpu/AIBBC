@@ -29,6 +29,10 @@ pub fn run() {
             commands::patients::get_cycles,
             commands::patients::add_patient,
             commands::patients::delete_patient,
+            // schedules
+            commands::schedules::get_schedules,
+            commands::schedules::save_schedule,
+            commands::schedules::delete_schedule,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
