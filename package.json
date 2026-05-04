@@ -19,7 +19,6 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
     "@tauri-apps/api": "^2.10.1",
     "concurrently": "^8.2.2",
     "cors": "^2.8.5",
