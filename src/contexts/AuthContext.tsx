@@ -1,5 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { useIdleLock } from '../hooks/useIdleLock';
+
+const DEFAULT_IDLE_MS = 15 * 60 * 1000; // 15 minutes
 
 interface AuthContextValue {
   unlocked: boolean;
@@ -8,6 +11,11 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function IdleLockWatcher({ onLock }: { onLock: () => void }) {
+  useIdleLock(DEFAULT_IDLE_MS, onLock);
+  return null;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [unlocked, setUnlocked] = useState(false);
@@ -32,6 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ unlocked, unlock, lock }}>
+      {/* Only watch for idle when the session is actually open */}
+      {unlocked && <IdleLockWatcher onLock={lock} />}
       {children}
     </AuthContext.Provider>
   );
