@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, User, AlertCircle, CheckCircle, Printer } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { invoke } from '@tauri-apps/api/core';
 import { canDeliverTreatment, getNextDeliveryDay, getLutetiumAdmissionDate, getLutetiumDischargeDate, getLuPsmaAdmissionDate, getLuPsmaDischargeDate, formatDateToLocalString, areAllDatesBusinessDays } from '../utils/dateHelpers';
 import { PatientForm } from './patient/PatientForm';
 import { OccupancyStats } from './patient/OccupancyStats';
@@ -49,36 +49,18 @@ function PatientManager() {
   }, []);
 
   const loadPatients = async () => {
-    if (!supabase) return;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('treatment_patients')
-        .select('*')
-        .order('start_date', { ascending: false });
-
-      if (error) throw error;
-      setPatients(data || []);
+      const data = await invoke<Patient[]>('get_patients');
+      setPatients(data);
     } catch (error) {
       console.error('Error loading patients:', error);
     }
   };
 
   const loadCycles = async () => {
-    if (!supabase) return;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('treatment_cycles')
-        .select('*')
-        .order('scheduled_date', { ascending: true });
-
-      if (error) throw error;
-      setCycles(data || []);
+      const data = await invoke<Cycle[]>('get_cycles');
+      setCycles(data);
     } catch (error) {
       console.error('Error loading cycles:', error);
     }
@@ -237,7 +219,6 @@ function PatientManager() {
   };
 
   const addPatient = async () => {
-    if (!supabase) return;
     if (!newPatient.name.trim()) {
       setMessage({ type: 'error', text: '患者名を入力してください' });
       return;
@@ -245,9 +226,6 @@ function PatientManager() {
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('ログインが必要です');
-
       const scheduledCycles = calculateCycles(
         newPatient.treatmentType,
         newPatient.startDate,
@@ -267,39 +245,16 @@ function PatientManager() {
           type: 'error',
           text: `サイクル${conflicts.join(', ')}が他の患者と重複しています。次に利用可能な開始日: ${new Date(nextAvailable).toLocaleDateString('ja-JP')}`
         });
-        setLoading(false);
         return;
       }
 
-      const { data: patientData, error: patientError } = await supabase
-        .from('treatment_patients')
-        .insert({
-          user_id: user.id,
-          patient_name: newPatient.name,
-          treatment_type: newPatient.treatmentType,
-          start_date: newPatient.startDate,
-          cycles_planned: newPatient.cyclesPlanned,
-          cycles_completed: 0
-        })
-        .select()
-        .single();
-
-      if (patientError) throw patientError;
-
-      const cyclesData = scheduledCycles.map(cycle => ({
-        patient_id: patientData.id,
-        cycle_number: cycle.cycleNumber,
-        scheduled_date: cycle.scheduledDate,
-        admission_date: cycle.admissionDate,
-        discharge_date: cycle.dischargeDate,
-        status: 'scheduled'
-      }));
-
-      const { error: cyclesError } = await supabase
-        .from('treatment_cycles')
-        .insert(cyclesData);
-
-      if (cyclesError) throw cyclesError;
+      await invoke('add_patient', {
+        patientName: newPatient.name,
+        treatmentType: newPatient.treatmentType,
+        startDate: newPatient.startDate,
+        cyclesPlanned: newPatient.cyclesPlanned,
+        cycles: scheduledCycles,
+      });
 
       setMessage({ type: 'success', text: '患者を追加しました' });
       setNewPatient({
@@ -313,7 +268,7 @@ function PatientManager() {
       await loadCycles();
     } catch (error) {
       console.error('Error adding patient:', error);
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : '患者の追加に失敗しました' });
+      setMessage({ type: 'error', text: typeof error === 'string' ? error : '患者の追加に失敗しました' });
     } finally {
       setLoading(false);
     }
@@ -323,13 +278,7 @@ function PatientManager() {
     if (!confirm('この患者を削除してもよろしいですか？関連するすべてのサイクルも削除されます。')) return;
 
     try {
-      const { error } = await supabase
-        .from('treatment_patients')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
+      await invoke('delete_patient', { id });
       setMessage({ type: 'success', text: '患者を削除しました' });
       await loadPatients();
       await loadCycles();

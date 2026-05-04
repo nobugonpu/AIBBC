@@ -24,6 +24,11 @@ pub fn run() {
             commands::auth::setup_password,
             commands::auth::unlock,
             commands::auth::lock,
+            // patients
+            commands::patients::get_patients,
+            commands::patients::get_cycles,
+            commands::patients::add_patient,
+            commands::patients::delete_patient,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
