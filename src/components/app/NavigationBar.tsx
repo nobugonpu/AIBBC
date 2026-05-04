@@ -73,7 +73,7 @@ export function NavigationBar({ currentPage, onPageChange, onSignOut }: Navigati
         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors shadow-sm"
       >
         <LogOut className="h-4 w-4" />
-        Sign Out
+        ロック
       </button>
     </div>
   );
