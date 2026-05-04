@@ -8,8 +8,13 @@ use std::path::Path;
 pub fn open_encrypted(db_path: &Path, key: &DerivedKey) -> AppResult<Connection> {
     let conn = Connection::open(db_path)?;
 
+    // SQLCipher needs the raw blob literal syntax (PRAGMA key = "x'...'"),
+    // not a string-quoted value. pragma_update would wrap the value in
+    // single quotes and break it, so use execute_batch with formatted SQL.
+    // hex_key is 64 chars of lowercase hex, no injection risk.
     let hex_key = hex::encode(key.0);
-    conn.pragma_update(None, "key", format!("x'{}'", hex_key))?;
+    let pragma = format!("PRAGMA key = \"x'{}'\";", hex_key);
+    conn.execute_batch(&pragma)?;
 
     match conn.query_row("SELECT count(*) FROM sqlite_master", [], |row| {
         let _: i64 = row.get(0)?;
