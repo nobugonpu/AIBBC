@@ -33,6 +33,11 @@ pub fn run() {
             commands::schedules::get_schedules,
             commands::schedules::save_schedule,
             commands::schedules::delete_schedule,
+            // media
+            commands::media::save_media,
+            commands::media::get_media,
+            commands::media::read_media_file,
+            commands::media::delete_media,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

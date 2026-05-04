@@ -1,3 +1,4 @@
+use crate::crypto::key::DerivedKey;
 use rusqlite::Connection;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -23,14 +24,17 @@ impl AppPaths {
     }
 }
 
+/// Holds both the SQLCipher connection and the in-memory session key.
+/// When the user locks, this entire variant is dropped — the Connection
+/// closes and the DerivedKey is zeroed (via its Drop impl).
 pub enum DbState {
     Locked,
-    Unlocked(Connection),
+    Unlocked { conn: Connection, key: DerivedKey },
 }
 
 impl DbState {
     pub fn is_unlocked(&self) -> bool {
-        matches!(self, DbState::Unlocked(_))
+        matches!(self, DbState::Unlocked { .. })
     }
 }
 

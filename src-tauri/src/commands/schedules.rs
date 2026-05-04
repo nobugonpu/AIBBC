@@ -23,7 +23,7 @@ pub fn get_schedules(state: State<'_, AppState>) -> AppResult<Vec<SavedSchedule>
     let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
     match &*guard {
         DbState::Locked => Err(AppError::Locked),
-        DbState::Unlocked(conn) => {
+        DbState::Unlocked { conn, .. } => {
             let mut stmt = conn.prepare(
                 "SELECT id, schedule_name, total_days_available, period_days,
                         lu_psma_count, lutetium_count, total_days_used,
@@ -82,7 +82,7 @@ pub fn save_schedule(
     let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
     match &*guard {
         DbState::Locked => Err(AppError::Locked),
-        DbState::Unlocked(conn) => {
+        DbState::Unlocked { conn, .. } => {
             let id = Uuid::new_v4().to_string();
             let data_str = serde_json::to_string(&schedule_data)
                 .map_err(|e| AppError::Other(e.to_string()))?;
@@ -112,7 +112,7 @@ pub fn delete_schedule(id: String, state: State<'_, AppState>) -> AppResult<()> 
     let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
     match &*guard {
         DbState::Locked => Err(AppError::Locked),
-        DbState::Unlocked(conn) => {
+        DbState::Unlocked { conn, .. } => {
             conn.execute(
                 "DELETE FROM treatment_schedules WHERE id = ?1",
                 rusqlite::params![id],

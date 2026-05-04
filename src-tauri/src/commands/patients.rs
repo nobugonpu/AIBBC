@@ -42,7 +42,7 @@ pub fn get_patients(state: State<'_, AppState>) -> AppResult<Vec<Patient>> {
     let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
     match &*guard {
         DbState::Locked => Err(AppError::Locked),
-        DbState::Unlocked(conn) => {
+        DbState::Unlocked { conn, .. } => {
             let mut stmt = conn.prepare(
                 "SELECT id, patient_name, treatment_type, start_date, cycles_planned,
                         cycles_completed, created_at
@@ -71,7 +71,7 @@ pub fn get_cycles(state: State<'_, AppState>) -> AppResult<Vec<Cycle>> {
     let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
     match &*guard {
         DbState::Locked => Err(AppError::Locked),
-        DbState::Unlocked(conn) => {
+        DbState::Unlocked { conn, .. } => {
             let mut stmt = conn.prepare(
                 "SELECT id, patient_id, cycle_number, scheduled_date, admission_date,
                         discharge_date, status, created_at
@@ -110,7 +110,7 @@ pub fn add_patient(
     let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
     match &*guard {
         DbState::Locked => Err(AppError::Locked),
-        DbState::Unlocked(conn) => {
+        DbState::Unlocked { conn, .. } => {
             let patient_id = Uuid::new_v4().to_string();
 
             conn.execute_batch("BEGIN EXCLUSIVE;")?;
@@ -186,7 +186,7 @@ pub fn delete_patient(id: String, state: State<'_, AppState>) -> AppResult<()> {
     let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
     match &*guard {
         DbState::Locked => Err(AppError::Locked),
-        DbState::Unlocked(conn) => {
+        DbState::Unlocked { conn, .. } => {
             conn.execute(
                 "DELETE FROM patients WHERE id = ?1",
                 rusqlite::params![id],

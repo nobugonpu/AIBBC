@@ -50,7 +50,7 @@ pub fn setup_password(password: String, state: State<'_, AppState>) -> AppResult
     }
 
     let mut guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
-    *guard = DbState::Unlocked(conn);
+    *guard = DbState::Unlocked { conn, key };
     Ok(())
 }
 
@@ -72,7 +72,7 @@ pub fn unlock(password: String, state: State<'_, AppState>) -> AppResult<()> {
     run_migrations(&conn)?;
 
     let mut guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
-    *guard = DbState::Unlocked(conn);
+    *guard = DbState::Unlocked { conn, key };
     Ok(())
 }
 
