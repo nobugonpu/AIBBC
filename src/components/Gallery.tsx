@@ -280,15 +280,11 @@ function MediaCard({
           )}
           <button
             type="button"
-            onClick={handleExport}
-            disabled={exporting}
-            className="flex items-center gap-1 text-xs px-2 py-1 rounded text-gray-700 bg-gray-100 hover:bg-green-100 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            title="復号してネイティブダイアログで保存"
+            onClick={() => { console.log('export clicked', item.id); alert('export clicked: ' + item.id); }}
+            className="flex items-center gap-1 text-xs px-2 py-1 rounded text-gray-700 bg-gray-100 hover:bg-green-100 hover:text-green-700 transition-colors"
           >
-            {exporting
-              ? <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
-              : <Download className="w-3 h-3" />}
-            {exporting ? 'エクスポート中...' : 'エクスポート'}
+            <Download className="w-3 h-3" />
+            エクスポート
           </button>
           <button
             onClick={() => onDelete(item.id)}
