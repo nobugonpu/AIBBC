@@ -1,5 +1,14 @@
-import { Clock, Printer, Trash2 } from 'lucide-react';
-import type { Patient, Cycle, TreatmentInfoMap } from '../../shared/contracts/patient';
+import { useState } from 'react';
+import { Clock, Printer, Trash2, ChevronDown, ChevronUp, Pencil, Check, X } from 'lucide-react';
+import type { Patient, Cycle, TreatmentInfoMap, CycleStatus } from '../../shared/contracts/patient';
+
+export interface CycleUpdatePayload {
+  scheduledDate: string;
+  admissionDate: string;
+  dischargeDate: string;
+  status: CycleStatus;
+  notes: string;
+}
 
 interface PatientListProps {
   patients: Patient[];
@@ -7,65 +16,305 @@ interface PatientListProps {
   treatmentInfo: TreatmentInfoMap;
   onDelete: (id: string) => void;
   onPrint: (id: string) => void;
+  onCycleUpdate: (id: string, update: CycleUpdatePayload) => Promise<void>;
 }
 
-export function PatientList({ patients, cycles, treatmentInfo, onDelete, onPrint }: PatientListProps) {
+const STATUS_LABELS: Record<CycleStatus, string> = {
+  scheduled: '予定',
+  completed: '完了',
+  cancelled: 'キャンセル',
+};
+
+const STATUS_COLORS: Record<CycleStatus, string> = {
+  scheduled: 'bg-blue-100 text-blue-800',
+  completed: 'bg-green-100 text-green-800',
+  cancelled: 'bg-red-100 text-red-800',
+};
+
+function CycleEditRow({
+  cycle,
+  onSave,
+  onCancel,
+}: {
+  cycle: Cycle;
+  onSave: (update: CycleUpdatePayload) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [values, setValues] = useState<CycleUpdatePayload>({
+    scheduledDate: cycle.scheduled_date,
+    admissionDate: cycle.admission_date,
+    dischargeDate: cycle.discharge_date,
+    status: cycle.status,
+    notes: cycle.notes ?? '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(values);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <tr className="bg-amber-50">
+      <td className="px-3 py-2 text-center text-sm font-medium text-gray-700">
+        第{cycle.cycle_number}
+      </td>
+      <td className="px-3 py-2">
+        <input
+          type="date"
+          value={values.scheduledDate}
+          onChange={e => setValues(v => ({ ...v, scheduledDate: e.target.value }))}
+          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+        />
+      </td>
+      <td className="px-3 py-2">
+        <input
+          type="date"
+          value={values.admissionDate}
+          onChange={e => setValues(v => ({ ...v, admissionDate: e.target.value }))}
+          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+        />
+      </td>
+      <td className="px-3 py-2">
+        <input
+          type="date"
+          value={values.dischargeDate}
+          onChange={e => setValues(v => ({ ...v, dischargeDate: e.target.value }))}
+          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+        />
+      </td>
+      <td className="px-3 py-2">
+        <select
+          value={values.status}
+          onChange={e => setValues(v => ({ ...v, status: e.target.value as CycleStatus }))}
+          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+        >
+          <option value="scheduled">予定</option>
+          <option value="completed">完了</option>
+          <option value="cancelled">キャンセル</option>
+        </select>
+      </td>
+      <td className="px-3 py-2">
+        <input
+          type="text"
+          value={values.notes}
+          onChange={e => setValues(v => ({ ...v, notes: e.target.value }))}
+          placeholder="メモを入力"
+          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+        />
+      </td>
+      <td className="px-3 py-2">
+        <div className="flex gap-1">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            title="保存"
+            className="p-1.5 rounded text-green-600 hover:bg-green-100 disabled:opacity-40 transition-colors"
+          >
+            <Check className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onCancel}
+            disabled={saving}
+            title="キャンセル"
+            className="p-1.5 rounded text-red-500 hover:bg-red-100 disabled:opacity-40 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function CycleViewRow({
+  cycle,
+  onEdit,
+}: {
+  cycle: Cycle;
+  onEdit: () => void;
+}) {
+  return (
+    <tr className="border-b border-gray-100 hover:bg-gray-50">
+      <td className="px-3 py-2 text-center text-sm font-medium text-gray-600">
+        第{cycle.cycle_number}
+      </td>
+      <td className="px-3 py-2 text-sm text-gray-700">
+        {new Date(cycle.scheduled_date).toLocaleDateString('ja-JP')}
+      </td>
+      <td className="px-3 py-2 text-sm text-gray-700">
+        {new Date(cycle.admission_date).toLocaleDateString('ja-JP')}
+      </td>
+      <td className="px-3 py-2 text-sm text-gray-700">
+        {new Date(cycle.discharge_date).toLocaleDateString('ja-JP')}
+      </td>
+      <td className="px-3 py-2">
+        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[cycle.status as CycleStatus]}`}>
+          {STATUS_LABELS[cycle.status as CycleStatus] ?? cycle.status}
+        </span>
+      </td>
+      <td className="px-3 py-2 text-sm text-gray-500 max-w-[160px] truncate">
+        {cycle.notes || <span className="text-gray-300">—</span>}
+      </td>
+      <td className="px-3 py-2">
+        <button
+          onClick={onEdit}
+          title="編集"
+          className="p-1.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+export function PatientList({
+  patients,
+  cycles,
+  treatmentInfo,
+  onDelete,
+  onPrint,
+  onCycleUpdate,
+}: PatientListProps) {
+  const [expandedPatients, setExpandedPatients] = useState<Set<string>>(new Set());
+  const [editingCycleId, setEditingCycleId] = useState<string | null>(null);
+
+  const toggleExpand = (patientId: string) => {
+    setExpandedPatients(prev => {
+      const next = new Set(prev);
+      if (next.has(patientId)) {
+        next.delete(patientId);
+        setEditingCycleId(null);
+      } else {
+        next.add(patientId);
+      }
+      return next;
+    });
+  };
+
+  const handleSaveCycle = async (cycleId: string, update: CycleUpdatePayload) => {
+    await onCycleUpdate(cycleId, update);
+    setEditingCycleId(null);
+  };
+
   if (patients.length === 0) return null;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <h3 className="text-xl font-bold text-gray-900 mb-4">登録患者一覧</h3>
       <div className="space-y-3">
-        {patients.map((patient) => {
+        {patients.map(patient => {
           const info = treatmentInfo[patient.treatment_type];
-          const patientCycles = cycles.filter(c => c.patient_id === patient.id);
-          const nextCycle = patientCycles.find(c => c.status === 'scheduled' && new Date(c.scheduled_date) >= new Date());
+          const patientCycles = cycles
+            .filter(c => c.patient_id === patient.id)
+            .sort((a, b) => a.cycle_number - b.cycle_number);
+          const nextCycle = patientCycles.find(
+            c => c.status === 'scheduled' && new Date(c.scheduled_date) >= new Date()
+          );
+          const isExpanded = expandedPatients.has(patient.id);
 
           return (
             <div
               key={patient.id}
-              className={`p-4 rounded-lg border-2 ${
+              className={`rounded-lg border-2 ${
                 info.color === 'blue' ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="font-semibold text-gray-900 text-lg">{patient.patient_name}</div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      info.color === 'blue' ? 'bg-blue-200 text-blue-900' : 'bg-green-200 text-green-900'
-                    }`}>
-                      {info.name}
-                    </span>
+              {/* Patient header row */}
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
+                      <div className="font-semibold text-gray-900 text-lg">{patient.patient_name}</div>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        info.color === 'blue' ? 'bg-blue-200 text-blue-900' : 'bg-green-200 text-green-900'
+                      }`}>
+                        {info.name}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <div>開始日: {new Date(patient.start_date).toLocaleDateString('ja-JP')}</div>
+                      <div>進捗: {patient.cycles_completed} / {patient.cycles_planned} サイクル完了</div>
+                      {nextCycle && (
+                        <div className="flex items-center gap-2 mt-2 text-blue-700 font-medium">
+                          <Clock className="w-4 h-4" />
+                          次回予定: {new Date(nextCycle.scheduled_date).toLocaleDateString('ja-JP')}（第{nextCycle.cycle_number}サイクル）
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <div>開始日: {new Date(patient.start_date).toLocaleDateString('ja-JP')}</div>
-                    <div>進捗: {patient.cycles_completed} / {patient.cycles_planned} サイクル完了</div>
-                    {nextCycle && (
-                      <div className="flex items-center gap-2 mt-2 text-blue-700 font-medium">
-                        <Clock className="w-4 h-4" />
-                        次回予定: {new Date(nextCycle.scheduled_date).toLocaleDateString('ja-JP')} (第{nextCycle.cycle_number}サイクル)
-                      </div>
-                    )}
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => toggleExpand(patient.id)}
+                      className={`px-3 py-2 text-sm rounded-lg border transition-colors flex items-center gap-1 ${
+                        isExpanded
+                          ? 'bg-gray-200 border-gray-300 text-gray-700'
+                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      サイクル（{patientCycles.length}）
+                    </button>
+                    <button
+                      onClick={() => onPrint(patient.id)}
+                      className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                    >
+                      <Printer className="w-4 h-4" />
+                      印刷
+                    </button>
+                    <button
+                      onClick={() => onDelete(patient.id)}
+                      className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => onPrint(patient.id)}
-                    className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                    title="タイムライン印刷"
-                  >
-                    <Printer className="w-4 h-4" />
-                    印刷
-                  </button>
-                  <button
-                    onClick={() => onDelete(patient.id)}
-                    className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
+
+              {/* Cycle detail table */}
+              {isExpanded && (
+                <div className={`border-t overflow-x-auto ${
+                  info.color === 'blue' ? 'border-blue-200' : 'border-green-200'
+                }`}>
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-white/50">
+                        <th className="px-3 py-2 text-xs font-semibold text-gray-500 text-center w-16">サイクル</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-gray-500">治療日</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-gray-500">入院日</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-gray-500">退院日</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-gray-500 w-24">ステータス</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-gray-500">メモ</th>
+                        <th className="px-3 py-2 w-10"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {patientCycles.map(cycle =>
+                        editingCycleId === cycle.id ? (
+                          <CycleEditRow
+                            key={cycle.id}
+                            cycle={cycle}
+                            onSave={update => handleSaveCycle(cycle.id, update)}
+                            onCancel={() => setEditingCycleId(null)}
+                          />
+                        ) : (
+                          <CycleViewRow
+                            key={cycle.id}
+                            cycle={cycle}
+                            onEdit={() => setEditingCycleId(cycle.id)}
+                          />
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           );
         })}

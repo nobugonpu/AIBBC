@@ -5,7 +5,7 @@ import PatientManager from '../PatientManager';
 interface GuestViewProps {
   guestPage: 'treatment' | 'patients';
   onGuestPageChange: (page: 'treatment' | 'patients') => void;
-  onShowAuth: () => void;
+  onShowAuth?: () => void;
 }
 
 export function GuestView({ guestPage, onGuestPageChange, onShowAuth }: GuestViewProps) {
@@ -41,12 +41,14 @@ export function GuestView({ guestPage, onGuestPageChange, onShowAuth }: GuestVie
                 Patients
               </button>
             </nav>
-            <button
-              onClick={onShowAuth}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
-            >
-              ログイン
-            </button>
+            {onShowAuth && (
+              <button
+                onClick={onShowAuth}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+              >
+                ログイン
+              </button>
+            )}
           </div>
         </div>
         {guestPage === 'treatment' ? <TreatmentScheduler /> : <PatientManager />}

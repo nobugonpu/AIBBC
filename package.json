@@ -8,6 +8,9 @@
     "dev:all": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "tsx watch server/index.ts",
     "dev:client": "vite",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "build": "vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "start:server": "node dist/server/index.js",
@@ -16,7 +19,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
+    "@tauri-apps/api": "^2.10.1",
     "concurrently": "^8.2.2",
     "cors": "^2.8.5",
     "date-holidays": "^3.26.5",
@@ -29,6 +32,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
+    "@tauri-apps/cli": "^2.10.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.14.2",

@@ -1,319 +1,157 @@
-import { useEffect, useState } from 'react';
-import { Session } from '@supabase/supabase-js';
-import Auth from './components/Auth';
+import { useRef, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import LocalAuth from './components/LocalAuth';
 import Gallery from './components/Gallery';
 import Home from './components/Home';
 import TreatmentScheduler from './components/TreatmentScheduler';
 import PatientManager from './components/PatientManager';
 import { NavigationBar } from './components/app/NavigationBar';
-import { GuestView } from './components/app/GuestView';
-import { MediaUploadForm } from './components/app/MediaUploadForm';
-import { supabase } from './lib/supabase';
-import { extractVideoFrame } from './utils/videoFrameExtractor';
-import { CheckCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle, Upload } from 'lucide-react';
 
 type Page = 'home' | 'upload' | 'gallery' | 'treatment' | 'patients';
 
-function App() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [currentPage, setCurrentPage] = useState<Page>('home');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
-  const [description, setDescription] = useState('');
-  const [aiPrompt, setAiPrompt] = useState('');
+function MediaUpload() {
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState('');
+  const [desc, setDesc] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [showAuth, setShowAuth] = useState(false);
-  const [guestPage, setGuestPage] = useState<'treatment' | 'patients'>('treatment');
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      (async () => {
-        setSession(session);
-      })();
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      setAiPrompt('');
-    }
-  };
-
-  const generatePromptForMedia = async (imageData: string, userDesc: string = '') => {
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-image`;
-
-      const aiResponse = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${sessionData.session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ imageData, apiKey: import.meta.env.VITE_OPENAI_API_KEY }),
-      });
-
-      if (!aiResponse.ok) {
-        let errorMsg = 'Unknown error';
-        const responseText = await aiResponse.text();
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMsg = errorData.error || errorMsg;
-        } catch (e) {
-          errorMsg = responseText || errorMsg;
-        }
-        setMessage({ type: 'error', text: `画像の分析に失敗しました: ${errorMsg}` });
-        return;
-      }
-
-      const aiData = await aiResponse.json();
-      const aiDescription = aiData.description;
-
-      if (aiResponse.ok) {
-        const promptApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-prompt`;
-        const promptResponse = await fetch(promptApiUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${sessionData.session?.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            aiDescription: aiDescription,
-            userDescription: userDesc,
-            apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-          }),
-        });
-
-        if (!promptResponse.ok) {
-          let errorMsg = 'Unknown error';
-          const responseText = await promptResponse.text();
-          try {
-            const errorData = JSON.parse(responseText);
-            errorMsg = errorData.error || errorMsg;
-          } catch (e) {
-            errorMsg = responseText || errorMsg;
-          }
-          setMessage({ type: 'error', text: `プロンプトの生成に失敗しました: ${errorMsg}` });
-          return;
-        }
-
-        const promptData = await promptResponse.json();
-        setAiPrompt(promptData.prompt);
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'ネットワークエラー: ' + (error instanceof Error ? error.message : '不明なエラー') });
-    }
-  };
-
-  const handleDescriptionBlur = async () => {
-    if (selectedFile && description.trim()) {
-      setUploading(true);
-      try {
-        if (selectedFile.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-            await generatePromptForMedia(reader.result as string, description);
-            setUploading(false);
-          };
-          reader.readAsDataURL(selectedFile);
-        } else if (selectedFile.type.startsWith('video/')) {
-          const frameData = await extractVideoFrame(selectedFile);
-          if (frameData) {
-            await generatePromptForMedia(frameData, description);
-          }
-          setUploading(false);
-        }
-      } catch (error) {
-        console.error('Error generating prompt:', error);
-        setUploading(false);
-      }
-    }
-  };
-
-  const handleGeneratePrompt = async () => {
-    setUploading(true);
-    try {
-      if (selectedFile.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          await generatePromptForMedia(reader.result as string, description);
-          setUploading(false);
-        };
-        reader.readAsDataURL(selectedFile);
-      } else if (selectedFile.type.startsWith('video/')) {
-        const frameData = await extractVideoFrame(selectedFile);
-        if (frameData) {
-          await generatePromptForMedia(frameData, description);
-        }
-        setUploading(false);
-      }
-    } catch (error) {
-      console.error('Error generating prompt:', error);
-      setUploading(false);
-    }
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+    setMsg(null);
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !session?.user) return;
-
+    if (!file) return;
+    setUploading(true);
+    setMsg(null);
     try {
-      setUploading(true);
-      setMessage(null);
-
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const storagePath = `${session.user.id}/${fileName}`;
-
-      const isVideo = selectedFile.type.startsWith('video/');
-      const bucketName = isVideo ? 'videos' : 'photos';
-
-      const { error: uploadError } = await supabase.storage
-        .from(bucketName)
-        .upload(storagePath, selectedFile);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(storagePath);
-
-      if (isVideo) {
-        let aiDescription = '';
-        try {
-          const frameData = await extractVideoFrame(selectedFile);
-
-          if (frameData) {
-            const { data: sessionData } = await supabase.auth.getSession();
-
-            const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-image`;
-            const aiResponse = await fetch(
-              apiUrl,
-              {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${sessionData.session?.access_token}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ imageData: frameData, apiKey: import.meta.env.VITE_OPENAI_API_KEY }),
-              }
-            );
-
-            if (aiResponse.ok) {
-              const aiData = await aiResponse.json();
-              aiDescription = aiData.description || '';
-            }
-          }
-        } catch (aiError) {
-          console.error('Error getting AI description for video:', aiError);
-        }
-
-        const { error: dbError } = await supabase
-          .from('videos')
-          .insert({
-            user_id: session.user.id,
-            video_url: publicUrl,
-            storage_path: storagePath,
-            description: description.trim(),
-            ai_description: aiDescription,
-          });
-
-        if (dbError) throw dbError;
-        setMessage({ type: 'success', text: '動画をアップロードしました' });
-      } else {
-        let aiDescription = '';
-        try {
-          const { data: sessionData } = await supabase.auth.getSession();
-
-          const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-image`;
-          const aiResponse = await fetch(
-            apiUrl,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${sessionData.session?.access_token}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ imageUrl: publicUrl, apiKey: import.meta.env.VITE_OPENAI_API_KEY }),
-            }
-          );
-
-          if (aiResponse.ok) {
-            const aiData = await aiResponse.json();
-            aiDescription = aiData.description || '';
-          }
-        } catch (aiError) {
-          console.error('Error getting AI description:', aiError);
-        }
-
-        const { error: dbError } = await supabase
-          .from('photos')
-          .insert({
-            user_id: session.user.id,
-            photo_url: publicUrl,
-            storage_path: storagePath,
-            description: description.trim(),
-            ai_description: aiDescription,
-          });
-
-        if (dbError) throw dbError;
-        setMessage({ type: 'success', text: '写真をアップロードしました' });
-      }
-
-      setSelectedFile(null);
-      setPreviewUrl('');
-      setDescription('');
-      setAiPrompt('');
-
-      const fileInput = document.getElementById('photo-upload') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
-    } catch (error) {
-      console.error('Error uploading media:', error);
-      setMessage({
-        type: 'error',
-        text: error instanceof Error ? error.message : 'メディアのアップロードに失敗しました。もう一度お試しください。'
+      const b64 = await fileToBase64(file);
+      const ext = file.name.split('.').pop() ?? '';
+      const mediaType = file.type.startsWith('video/') ? 'video' : 'photo';
+      await invoke('save_media', {
+        mediaType,
+        fileBytesB64: b64,
+        description: desc.trim(),
+        fileExt: ext,
       });
+      setMsg({ type: 'success', text: 'アップロードしました' });
+      setFile(null);
+      setPreview('');
+      setDesc('');
+      if (inputRef.current) inputRef.current.value = '';
+    } catch (e) {
+      setMsg({ type: 'error', text: typeof e === 'string' ? e : 'アップロードに失敗しました' });
     } finally {
       setUploading(false);
     }
   };
 
-  if (!session) {
-    if (showAuth) {
-      return <Auth />;
-    }
+  return (
+    <div className="max-w-xl mx-auto space-y-4">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
+        <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <Upload className="w-5 h-5 text-blue-600" />
+          メディアアップロード
+        </h2>
 
-    return (
-      <GuestView
-        guestPage={guestPage}
-        onGuestPageChange={setGuestPage}
-        onShowAuth={() => setShowAuth(true)}
-      />
-    );
+        {msg && (
+          <div className={`p-3 rounded-lg flex items-center gap-2 text-sm ${
+            msg.type === 'success'
+              ? 'bg-green-50 border border-green-200 text-green-800'
+              : 'bg-red-50 border border-red-200 text-red-800'
+          }`}>
+            {msg.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+            {msg.text}
+          </div>
+        )}
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*,video/*"
+          onChange={handleFile}
+          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+        />
+
+        {preview && (
+          <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+            {file?.type.startsWith('video/') ? (
+              <video src={preview} controls className="w-full h-full object-contain" />
+            ) : (
+              <img src={preview} alt="preview" className="w-full h-full object-contain" />
+            )}
+          </div>
+        )}
+
+        <textarea
+          value={desc}
+          onChange={e => setDesc(e.target.value)}
+          placeholder="説明（任意）"
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+        />
+
+        <button
+          onClick={handleUpload}
+          disabled={!file || uploading}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+        >
+          {uploading ? (
+            <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />暗号化して保存中...</>
+          ) : (
+            <><Upload className="w-4 h-4" />暗号化して保存</>
+          )}
+        </button>
+        <p className="text-xs text-gray-400 text-center">
+          ファイルはAES-256-GCMで暗号化し、アプリのデータフォルダ内に保存されます。アップロード後は元ファイルを削除しても問題ありません。
+        </p>
+      </div>
+    </div>
+  );
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function AppContent() {
+  const { unlocked, unlock, lock } = useAuth();
+  const [currentPage, setCurrentPage] = useState<Page>('treatment');
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  if (!unlocked) {
+    return <LocalAuth onUnlocked={unlock} />;
   }
 
-  const getPageTitle = () => {
+  const getPageTitle = (): string => {
     switch (currentPage) {
-      case 'home': return 'ホーム';
-      case 'upload': return 'メディアアップロード';
-      case 'gallery': return 'ギャラリー';
+      case 'home':      return 'ホーム';
+      case 'upload':    return 'メディアアップロード';
+      case 'gallery':   return 'ギャラリー';
       case 'treatment': return '治療スケジューラ';
-      case 'patients': return '患者管理';
+      case 'patients':  return '患者管理';
+    }
+  };
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'home':      return <Home />;
+      case 'treatment': return <TreatmentScheduler />;
+      case 'patients':  return <PatientManager />;
+      case 'upload':    return <MediaUpload />;
+      case 'gallery':   return <Gallery />;
     }
   };
 
@@ -325,16 +163,18 @@ function App() {
           <NavigationBar
             currentPage={currentPage}
             onPageChange={setCurrentPage}
-            onSignOut={handleSignOut}
+            onSignOut={lock}
           />
         </div>
 
-        {message && currentPage === 'upload' && (
-          <div className={`mb-4 p-4 rounded-lg flex items-center gap-3 ${
-            message.type === 'success'
-              ? 'bg-green-50 border border-green-200 text-green-800'
-              : 'bg-red-50 border border-red-200 text-red-800'
-          }`}>
+        {message && (
+          <div
+            className={`mb-4 p-4 rounded-lg flex items-center gap-3 ${
+              message.type === 'success'
+                ? 'bg-green-50 border border-green-200 text-green-800'
+                : 'bg-red-50 border border-red-200 text-red-800'
+            }`}
+          >
             {message.type === 'success' ? (
               <CheckCircle className="w-5 h-5 flex-shrink-0" />
             ) : (
@@ -344,32 +184,16 @@ function App() {
           </div>
         )}
 
-        {currentPage === 'home' ? (
-          <Home />
-        ) : currentPage === 'treatment' ? (
-          <TreatmentScheduler />
-        ) : currentPage === 'patients' ? (
-          <PatientManager />
-        ) : currentPage === 'upload' ? (
-          <MediaUploadForm
-            selectedFile={selectedFile}
-            previewUrl={previewUrl}
-            description={description}
-            aiPrompt={aiPrompt}
-            uploading={uploading}
-            onFileChange={handleFileChange}
-            onDescriptionChange={setDescription}
-            onDescriptionBlur={handleDescriptionBlur}
-            onGeneratePrompt={handleGeneratePrompt}
-            onAiPromptChange={setAiPrompt}
-            onUpload={handleUpload}
-          />
-        ) : (
-          <Gallery />
-        )}
+        {renderPage()}
       </div>
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
