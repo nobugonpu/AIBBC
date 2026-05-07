@@ -10,11 +10,16 @@ use uuid::Uuid;
 /// save dialog. Returns the filename on success, None if the user cancelled.
 #[tauri::command]
 pub fn export_media(id: String, state: State<'_, AppState>) -> AppResult<Option<String>> {
+    eprintln!("[export_media] called with id={}", id);
+
     // Phase 1: look up and decrypt (hold mutex only for this block)
     let (decrypted, export_filename) = {
         let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
         match &*guard {
-            DbState::Locked => return Err(AppError::Locked),
+            DbState::Locked => {
+                eprintln!("[export_media] error: session is locked");
+                return Err(AppError::Locked);
+            }
             DbState::Unlocked { conn, key } => {
                 let rel_path: String = conn
                     .query_row(
@@ -22,7 +27,12 @@ pub fn export_media(id: String, state: State<'_, AppState>) -> AppResult<Option<
                         rusqlite::params![id],
                         |row| row.get(0),
                     )
-                    .map_err(|_| AppError::Other("メディアが見つかりません".into()))?;
+                    .map_err(|e| {
+                        eprintln!("[export_media] DB lookup failed: {}", e);
+                        AppError::Other("メディアが見つかりません".into())
+                    })?;
+
+                eprintln!("[export_media] resolved rel_path={}", rel_path);
 
                 let abs = state.paths.media_dir.join(&rel_path);
                 let encrypted = fs::read(&abs)?;
@@ -41,6 +51,12 @@ pub fn export_media(id: String, state: State<'_, AppState>) -> AppResult<Option<
         }
     }; // mutex released before opening the dialog
 
+    eprintln!(
+        "[export_media] decrypted {} bytes, opening dialog with filename={}",
+        decrypted.len(),
+        export_filename
+    );
+
     // Phase 2: native save dialog — runs synchronously on a thread-pool thread
     let save_path = rfd::FileDialog::new()
         .set_title("エクスポート先を選択")
@@ -49,10 +65,15 @@ pub fn export_media(id: String, state: State<'_, AppState>) -> AppResult<Option<
 
     match save_path {
         Some(path) => {
+            eprintln!("[export_media] writing to {:?}", path);
             fs::write(&path, &decrypted)?;
+            eprintln!("[export_media] write OK");
             Ok(Some(export_filename))
         }
-        None => Ok(None), // user cancelled
+        None => {
+            eprintln!("[export_media] user cancelled");
+            Ok(None)
+        }
     }
 }
 

@@ -26,17 +26,13 @@ function getMimeType(filePath: string, mediaType: 'photo' | 'video'): string {
   return map[ext] ?? (mediaType === 'video' ? 'video/mp4' : 'image/jpeg');
 }
 
-// Derives the original filename for download (strips path prefix and .enc suffix).
-function getExportFilename(filePath: string): string {
-  return (filePath.split('/').pop() ?? 'file').replace(/\.enc$/, '');
-}
-
 export default function Gallery() {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [blobUrls, setBlobUrls] = useState<Record<string, string>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [globalMsg, setGlobalMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     loadMedia();
@@ -132,6 +128,27 @@ export default function Gallery() {
         </span>
       </div>
 
+      {globalMsg && (
+        <div
+          className={`flex items-start gap-2 px-4 py-3 rounded-lg text-sm ${
+            globalMsg.type === 'success'
+              ? 'bg-green-50 text-green-800 border border-green-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}
+        >
+          {globalMsg.type === 'success'
+            ? <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            : <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />}
+          <span className="flex-1">{globalMsg.text}</span>
+          <button
+            onClick={() => setGlobalMsg(null)}
+            className="text-current opacity-60 hover:opacity-100 text-xs"
+          >
+            閉じる
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {pageItems.map(item => (
           <MediaCard
@@ -141,6 +158,7 @@ export default function Gallery() {
             onLoadBlob={getOrLoadBlob}
             onDelete={handleDelete}
             onCopyDescription={copyDescription}
+            onGlobalMsg={setGlobalMsg}
           />
         ))}
       </div>
@@ -178,38 +196,49 @@ function MediaCard({
   onLoadBlob,
   onDelete,
   onCopyDescription,
+  onGlobalMsg,
 }: {
   item: MediaItem;
   copiedId: string | null;
   onLoadBlob: (item: MediaItem) => Promise<string>;
   onDelete: (id: string) => void;
   onCopyDescription: (id: string, text: string) => void;
+  onGlobalMsg: (msg: { type: 'success' | 'error'; text: string } | null) => void;
 }) {
   const [blobUrl, setBlobUrl] = useState('');
   const [exporting, setExporting] = useState(false);
-  const [exportMsg, setExportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     onLoadBlob(item).then(url => setBlobUrl(url));
   }, [item.id]);
 
-  const handleExport = async () => {
+  const handleExport = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // eslint-disable-next-line no-console
+    console.log('[Gallery] export clicked, id=', item.id);
     setExporting(true);
-    setExportMsg(null);
+    onGlobalMsg(null);
     try {
-      // Rust decrypts the file, shows a native save dialog, writes the result.
-      // Returns the saved filename, or null when the user cancels the dialog.
+      // eslint-disable-next-line no-console
+      console.log('[Gallery] calling invoke("export_media")', item.id);
       const saved = await invoke<string | null>('export_media', { id: item.id });
+      // eslint-disable-next-line no-console
+      console.log('[Gallery] export_media returned:', saved);
       if (saved !== null) {
-        setExportMsg({ type: 'success', text: `エクスポートしました: ${saved}` });
-        setTimeout(() => setExportMsg(null), 4000);
+        onGlobalMsg({ type: 'success', text: `エクスポートしました: ${saved}` });
+      } else {
+        // null = user cancelled the dialog
+        onGlobalMsg({ type: 'success', text: 'エクスポートをキャンセルしました' });
       }
-      // null = user cancelled the dialog; no message needed
-    } catch (e) {
-      setExportMsg({
-        type: 'error',
-        text: `エクスポートに失敗しました: ${typeof e === 'string' ? e : '不明なエラー'}`,
-      });
+    } catch (err) {
+      const text = typeof err === 'string' ? err : (err instanceof Error ? err.message : JSON.stringify(err));
+      // eslint-disable-next-line no-console
+      console.error('[Gallery] export failed:', err);
+      onGlobalMsg({ type: 'error', text: `エクスポートに失敗しました: ${text}` });
+      // Belt-and-suspenders: alert() guarantees the user sees the error
+      // even if DevTools is closed and the banner is somehow obscured.
+      alert(`エクスポートに失敗しました\n${text}`);
     } finally {
       setExporting(false);
     }
@@ -238,19 +267,6 @@ function MediaCard({
           <p className="text-xs text-gray-500 line-clamp-2">{item.ai_description}</p>
         )}
 
-        {exportMsg && (
-          <div className={`flex items-start gap-1.5 text-xs rounded-md px-2 py-1.5 ${
-            exportMsg.type === 'success'
-              ? 'bg-green-50 text-green-800 border border-green-200'
-              : 'bg-red-50 text-red-800 border border-red-200'
-          }`}>
-            {exportMsg.type === 'success'
-              ? <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-              : <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />}
-            <span>{exportMsg.text}</span>
-          </div>
-        )}
-
         <div className="flex items-center gap-2 pt-1 flex-wrap">
           {item.description && (
             <button
@@ -263,9 +279,10 @@ function MediaCard({
             </button>
           )}
           <button
+            type="button"
             onClick={handleExport}
             disabled={exporting}
-            className="flex items-center gap-1 text-xs text-gray-500 hover:text-green-600 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1 text-xs px-2 py-1 rounded text-gray-700 bg-gray-100 hover:bg-green-100 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title="復号してネイティブダイアログで保存"
           >
             {exporting
