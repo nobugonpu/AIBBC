@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { ChevronLeft, ChevronRight, Copy, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Check, Download, Trash2, HardDrive } from 'lucide-react';
 
 interface MediaItem {
   id: string;
@@ -12,6 +12,24 @@ interface MediaItem {
 }
 
 const ITEMS_PER_PAGE = 10;
+
+// Derives MIME type from stored path (e.g. "photos/abc.jpg.enc" → "image/jpeg").
+// Falls back to type-based defaults for legacy files without extension in path.
+function getMimeType(filePath: string, mediaType: 'photo' | 'video'): string {
+  const ext = filePath.replace(/\.enc$/, '').split('.').pop()?.toLowerCase() ?? '';
+  const map: Record<string, string> = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+    gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp',
+    mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm',
+    avi: 'video/x-msvideo', mkv: 'video/x-matroska',
+  };
+  return map[ext] ?? (mediaType === 'video' ? 'video/mp4' : 'image/jpeg');
+}
+
+// Derives the original filename for download (strips path prefix and .enc suffix).
+function getExportFilename(filePath: string): string {
+  return (filePath.split('/').pop() ?? 'file').replace(/\.enc$/, '');
+}
 
 export default function Gallery() {
   const [items, setItems] = useState<MediaItem[]>([]);
@@ -46,7 +64,7 @@ export default function Gallery() {
     if (blobUrls[item.id]) return blobUrls[item.id];
     try {
       const b64: string = await invoke('read_media_file', { filePath: item.file_path });
-      const mime = item.media_type === 'video' ? 'video/mp4' : 'image/jpeg';
+      const mime = getMimeType(item.file_path, item.media_type);
       const blob = b64ToBlob(b64, mime);
       const url = URL.createObjectURL(blob);
       setBlobUrls(prev => ({ ...prev, [item.id]: url }));
@@ -105,6 +123,15 @@ export default function Gallery() {
 
   return (
     <div className="space-y-6">
+      {/* Encrypted storage notice */}
+      <div className="flex items-start gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+        <HardDrive className="w-4 h-4 mt-0.5 flex-shrink-0" />
+        <span>
+          表示中のメディアはアプリのデータフォルダ内にAES-256-GCMで暗号化保存されています。
+          元ファイルを削除・移動しても表示・再生できます。
+        </span>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {pageItems.map(item => (
           <MediaCard
@@ -113,7 +140,7 @@ export default function Gallery() {
             copiedId={copiedId}
             onLoadBlob={getOrLoadBlob}
             onDelete={handleDelete}
-            onCopy={copyDescription}
+            onCopyDescription={copyDescription}
           />
         ))}
       </div>
@@ -150,19 +177,28 @@ function MediaCard({
   copiedId,
   onLoadBlob,
   onDelete,
-  onCopy,
+  onCopyDescription,
 }: {
   item: MediaItem;
   copiedId: string | null;
   onLoadBlob: (item: MediaItem) => Promise<string>;
   onDelete: (id: string) => void;
-  onCopy: (id: string, text: string) => void;
+  onCopyDescription: (id: string, text: string) => void;
 }) {
   const [blobUrl, setBlobUrl] = useState('');
 
   useEffect(() => {
     onLoadBlob(item).then(url => setBlobUrl(url));
   }, [item.id]);
+
+  const handleExport = () => {
+    if (!blobUrl) return;
+    const filename = getExportFilename(item.file_path);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    a.click();
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
@@ -186,20 +222,31 @@ function MediaCard({
         {item.ai_description && (
           <p className="text-xs text-gray-500 line-clamp-2">{item.ai_description}</p>
         )}
-        <div className="flex gap-2 pt-1">
+        <div className="flex items-center gap-2 pt-1 flex-wrap">
           {item.description && (
             <button
-              onClick={() => onCopy(item.id, item.description)}
-              className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600"
+              onClick={() => onCopyDescription(item.id, item.description)}
+              className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors"
+              title="説明文をクリップボードにコピー"
             >
               {copiedId === item.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-              コピー
+              説明文をコピー
             </button>
           )}
           <button
-            onClick={() => onDelete(item.id)}
-            className="text-xs text-red-400 hover:text-red-600 ml-auto"
+            onClick={handleExport}
+            disabled={!blobUrl}
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-green-600 disabled:opacity-40 transition-colors"
+            title="復号してファイルを保存"
           >
+            <Download className="w-3 h-3" />
+            エクスポート
+          </button>
+          <button
+            onClick={() => onDelete(item.id)}
+            className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 ml-auto transition-colors"
+          >
+            <Trash2 className="w-3 h-3" />
             削除
           </button>
         </div>

@@ -1,6 +1,6 @@
 use rusqlite::Connection;
 
-pub const CURRENT_SCHEMA_VERSION: i64 = 1;
+pub const CURRENT_SCHEMA_VERSION: i64 = 2;
 
 const SCHEMA_V1: &str = r#"
 CREATE TABLE IF NOT EXISTS app_config (
@@ -56,9 +56,34 @@ CREATE INDEX IF NOT EXISTS idx_cycles_patient ON treatment_cycles(patient_id);
 CREATE INDEX IF NOT EXISTS idx_media_type     ON media(media_type);
 "#;
 
+// V2: adds notes column to treatment_cycles for clinical annotations
+const SCHEMA_V2: &str = r#"
+ALTER TABLE treatment_cycles ADD COLUMN notes TEXT NOT NULL DEFAULT '';
+"#;
+
 pub fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch("PRAGMA foreign_keys = ON;")?;
-    conn.execute_batch(SCHEMA_V1)?;
+
+    // Ensure app_config exists before we can read the version
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS app_config (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
+    )?;
+
+    let current_version: i64 = conn
+        .query_row(
+            "SELECT CAST(value AS INTEGER) FROM app_config WHERE key = 'schema_version'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
+
+    if current_version < 1 {
+        conn.execute_batch(SCHEMA_V1)?;
+    }
+    if current_version < 2 {
+        conn.execute_batch(SCHEMA_V2)?;
+    }
+
     conn.execute(
         "INSERT INTO app_config (key, value) VALUES ('schema_version', ?1)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",

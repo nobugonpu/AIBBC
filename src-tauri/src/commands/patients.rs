@@ -24,6 +24,7 @@ pub struct Cycle {
     pub admission_date: String,
     pub discharge_date: String,
     pub status: String,
+    pub notes: String,
     pub created_at: String,
 }
 
@@ -35,6 +36,16 @@ pub struct NewCycle {
     pub scheduled_date: String,
     pub admission_date: String,
     pub discharge_date: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCycle {
+    pub scheduled_date: String,
+    pub admission_date: String,
+    pub discharge_date: String,
+    pub status: String,
+    pub notes: String,
 }
 
 #[tauri::command]
@@ -74,7 +85,7 @@ pub fn get_cycles(state: State<'_, AppState>) -> AppResult<Vec<Cycle>> {
         DbState::Unlocked { conn, .. } => {
             let mut stmt = conn.prepare(
                 "SELECT id, patient_id, cycle_number, scheduled_date, admission_date,
-                        discharge_date, status, created_at
+                        discharge_date, status, notes, created_at
                  FROM treatment_cycles ORDER BY scheduled_date ASC",
             )?;
             let cycles = stmt
@@ -87,7 +98,8 @@ pub fn get_cycles(state: State<'_, AppState>) -> AppResult<Vec<Cycle>> {
                         admission_date: row.get(4)?,
                         discharge_date: row.get(5)?,
                         status: row.get(6)?,
-                        created_at: row.get(7)?,
+                        notes: row.get(7)?,
+                        created_at: row.get(8)?,
                     })
                 })?
                 .collect::<Result<Vec<_>, _>>()?;
@@ -133,8 +145,8 @@ pub fn add_patient(
                     conn.execute(
                         "INSERT INTO treatment_cycles
                          (id, patient_id, cycle_number, scheduled_date,
-                          admission_date, discharge_date, status)
-                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'scheduled')",
+                          admission_date, discharge_date, status, notes)
+                         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'scheduled', '')",
                         rusqlite::params![
                             Uuid::new_v4().to_string(),
                             patient_id,
@@ -176,6 +188,68 @@ pub fn add_patient(
                     Err(e)
                 }
             }
+        }
+    }
+}
+
+/// Updates a single treatment cycle and recalculates cycles_completed on the parent patient.
+#[tauri::command]
+pub fn update_cycle(
+    id: String,
+    update: UpdateCycle,
+    state: State<'_, AppState>,
+) -> AppResult<Cycle> {
+    let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
+    match &*guard {
+        DbState::Locked => Err(AppError::Locked),
+        DbState::Unlocked { conn, .. } => {
+            conn.execute(
+                "UPDATE treatment_cycles
+                 SET scheduled_date = ?1, admission_date = ?2, discharge_date = ?3,
+                     status = ?4, notes = ?5
+                 WHERE id = ?6",
+                rusqlite::params![
+                    update.scheduled_date,
+                    update.admission_date,
+                    update.discharge_date,
+                    update.status,
+                    update.notes,
+                    id,
+                ],
+            )?;
+
+            // Keep cycles_completed in sync with actual completed cycles
+            conn.execute(
+                "UPDATE patients
+                 SET cycles_completed = (
+                     SELECT COUNT(*) FROM treatment_cycles
+                     WHERE patient_id = (SELECT patient_id FROM treatment_cycles WHERE id = ?1)
+                       AND status = 'completed'
+                 )
+                 WHERE id = (SELECT patient_id FROM treatment_cycles WHERE id = ?2)",
+                rusqlite::params![id, id],
+            )?;
+
+            let cycle = conn.query_row(
+                "SELECT id, patient_id, cycle_number, scheduled_date, admission_date,
+                        discharge_date, status, notes, created_at
+                 FROM treatment_cycles WHERE id = ?1",
+                rusqlite::params![id],
+                |row| {
+                    Ok(Cycle {
+                        id: row.get(0)?,
+                        patient_id: row.get(1)?,
+                        cycle_number: row.get(2)?,
+                        scheduled_date: row.get(3)?,
+                        admission_date: row.get(4)?,
+                        discharge_date: row.get(5)?,
+                        status: row.get(6)?,
+                        notes: row.get(7)?,
+                        created_at: row.get(8)?,
+                    })
+                },
+            )?;
+            Ok(cycle)
         }
     }
 }

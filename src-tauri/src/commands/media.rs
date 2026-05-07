@@ -39,7 +39,12 @@ pub fn save_media(
             let raw = base64_decode(b64_data)?;
 
             let file_id = Uuid::new_v4().to_string();
-            let rel_path = format!("{}.enc", file_id);
+            let clean_ext = file_ext.trim_matches('.').to_lowercase();
+            let rel_path = if clean_ext.is_empty() {
+                format!("{}.enc", file_id)
+            } else {
+                format!("{}.{}.enc", file_id, clean_ext)
+            };
 
             // Ensure media sub-dir exists
             let media_subdir = if media_type == "video" { "videos" } else { "photos" };
@@ -57,8 +62,6 @@ pub fn save_media(
                  VALUES (?1, ?2, ?3, ?4, '')",
                 rusqlite::params![id, media_type, stored_rel, description],
             )?;
-
-            let _ = file_ext; // stored implicitly via .enc extension; original ext in metadata if needed later
 
             Ok(MediaItem {
                 id,

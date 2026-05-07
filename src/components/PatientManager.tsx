@@ -5,6 +5,7 @@ import { canDeliverTreatment, getNextDeliveryDay, getLutetiumAdmissionDate, getL
 import { PatientForm } from './patient/PatientForm';
 import { OccupancyStats } from './patient/OccupancyStats';
 import { PatientList } from './patient/PatientList';
+import type { CycleUpdatePayload } from './patient/PatientList';
 import { OccupancyCalendar } from './patient/OccupancyCalendar';
 import { OccupancyTimeline } from './patient/OccupancyTimeline';
 import { printPatientTimeline } from '../utils/printPatientTimeline';
@@ -274,6 +275,19 @@ function PatientManager() {
     }
   };
 
+  const updateCycle = async (id: string, update: CycleUpdatePayload) => {
+    try {
+      const updatedCycle = await invoke<Cycle>('update_cycle', { id, update });
+      setCycles(prev => prev.map(c => c.id === id ? updatedCycle : c));
+      await loadPatients();
+      setMessage({ type: 'success', text: 'サイクルを更新しました' });
+    } catch (error) {
+      console.error('Error updating cycle:', error);
+      setMessage({ type: 'error', text: 'サイクルの更新に失敗しました' });
+      throw error;
+    }
+  };
+
   const deletePatient = async (id: string) => {
     if (!confirm('この患者を削除してもよろしいですか？関連するすべてのサイクルも削除されます。')) return;
 
@@ -417,6 +431,7 @@ function PatientManager() {
         treatmentInfo={TREATMENT_INFO}
         onDelete={deletePatient}
         onPrint={handlePrintPatient}
+        onCycleUpdate={updateCycle}
       />
 
       {occupiedSlots.length > 0 && (

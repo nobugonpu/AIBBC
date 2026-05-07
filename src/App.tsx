@@ -109,7 +109,9 @@ function MediaUpload() {
             <><Upload className="w-4 h-4" />暗号化して保存</>
           )}
         </button>
-        <p className="text-xs text-gray-400 text-center">ファイルはAES-256-GCMで暗号化してローカルに保存されます</p>
+        <p className="text-xs text-gray-400 text-center">
+          ファイルはAES-256-GCMで暗号化し、アプリのデータフォルダ内に保存されます。アップロード後は元ファイルを削除しても問題ありません。
+        </p>
       </div>
     </div>
   );

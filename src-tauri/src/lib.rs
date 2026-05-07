@@ -28,6 +28,7 @@ pub fn run() {
             commands::patients::get_patients,
             commands::patients::get_cycles,
             commands::patients::add_patient,
+            commands::patients::update_cycle,
             commands::patients::delete_patient,
             // schedules
             commands::schedules::get_schedules,

@@ -19,6 +19,8 @@ export interface Cycle {
   admission_date: string;
   discharge_date: string;
   status: CycleStatus;
+  notes: string;
+  created_at: string;
 }
 
 export interface OccupiedSlot {
