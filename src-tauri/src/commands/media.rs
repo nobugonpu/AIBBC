@@ -6,6 +6,56 @@ use std::fs;
 use tauri::State;
 use uuid::Uuid;
 
+/// Decrypts a media file and saves it to a user-chosen location via a native
+/// save dialog. Returns the filename on success, None if the user cancelled.
+#[tauri::command]
+pub fn export_media(id: String, state: State<'_, AppState>) -> AppResult<Option<String>> {
+    // Phase 1: look up and decrypt (hold mutex only for this block)
+    let (decrypted, export_filename) = {
+        let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
+        match &*guard {
+            DbState::Locked => return Err(AppError::Locked),
+            DbState::Unlocked { conn, key } => {
+                let rel_path: String = conn
+                    .query_row(
+                        "SELECT file_path FROM media WHERE id = ?1",
+                        rusqlite::params![id],
+                        |row| row.get(0),
+                    )
+                    .map_err(|_| AppError::Other("メディアが見つかりません".into()))?;
+
+                let abs = state.paths.media_dir.join(&rel_path);
+                let encrypted = fs::read(&abs)?;
+                let plain = decrypt_file(&encrypted, key)?;
+
+                // "photos/uuid.jpg.enc" -> "uuid.jpg"
+                let filename = rel_path
+                    .split('/')
+                    .last()
+                    .unwrap_or("export")
+                    .trim_end_matches(".enc")
+                    .to_string();
+
+                (plain, filename)
+            }
+        }
+    }; // mutex released before opening the dialog
+
+    // Phase 2: native save dialog — runs synchronously on a thread-pool thread
+    let save_path = rfd::FileDialog::new()
+        .set_title("エクスポート先を選択")
+        .set_file_name(&export_filename)
+        .save_file();
+
+    match save_path {
+        Some(path) => {
+            fs::write(&path, &decrypted)?;
+            Ok(Some(export_filename))
+        }
+        None => Ok(None), // user cancelled
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MediaItem {
     pub id: String,

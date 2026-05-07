@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { ChevronLeft, ChevronRight, Copy, Check, Download, Trash2, HardDrive } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Check, Download, Trash2, HardDrive, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface MediaItem {
   id: string;
@@ -186,18 +186,33 @@ function MediaCard({
   onCopyDescription: (id: string, text: string) => void;
 }) {
   const [blobUrl, setBlobUrl] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     onLoadBlob(item).then(url => setBlobUrl(url));
   }, [item.id]);
 
-  const handleExport = () => {
-    if (!blobUrl) return;
-    const filename = getExportFilename(item.file_path);
-    const a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = filename;
-    a.click();
+  const handleExport = async () => {
+    setExporting(true);
+    setExportMsg(null);
+    try {
+      // Rust decrypts the file, shows a native save dialog, writes the result.
+      // Returns the saved filename, or null when the user cancels the dialog.
+      const saved = await invoke<string | null>('export_media', { id: item.id });
+      if (saved !== null) {
+        setExportMsg({ type: 'success', text: `エクスポートしました: ${saved}` });
+        setTimeout(() => setExportMsg(null), 4000);
+      }
+      // null = user cancelled the dialog; no message needed
+    } catch (e) {
+      setExportMsg({
+        type: 'error',
+        text: `エクスポートに失敗しました: ${typeof e === 'string' ? e : '不明なエラー'}`,
+      });
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -222,6 +237,20 @@ function MediaCard({
         {item.ai_description && (
           <p className="text-xs text-gray-500 line-clamp-2">{item.ai_description}</p>
         )}
+
+        {exportMsg && (
+          <div className={`flex items-start gap-1.5 text-xs rounded-md px-2 py-1.5 ${
+            exportMsg.type === 'success'
+              ? 'bg-green-50 text-green-800 border border-green-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}>
+            {exportMsg.type === 'success'
+              ? <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+              : <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />}
+            <span>{exportMsg.text}</span>
+          </div>
+        )}
+
         <div className="flex items-center gap-2 pt-1 flex-wrap">
           {item.description && (
             <button
@@ -235,12 +264,14 @@ function MediaCard({
           )}
           <button
             onClick={handleExport}
-            disabled={!blobUrl}
-            className="flex items-center gap-1 text-xs text-gray-500 hover:text-green-600 disabled:opacity-40 transition-colors"
-            title="復号してファイルを保存"
+            disabled={exporting}
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-green-600 disabled:opacity-50 transition-colors"
+            title="復号してネイティブダイアログで保存"
           >
-            <Download className="w-3 h-3" />
-            エクスポート
+            {exporting
+              ? <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+              : <Download className="w-3 h-3" />}
+            {exporting ? 'エクスポート中...' : 'エクスポート'}
           </button>
           <button
             onClick={() => onDelete(item.id)}
