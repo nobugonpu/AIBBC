@@ -96,7 +96,7 @@ export function PatientForm({ newPatient, setNewPatient, onAdd, loading, treatme
 
         <div className="flex items-end">
           <button
-            onClick={onAdd}
+            onClick={() => onAdd()}
             disabled={loading}
             className="w-full px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >

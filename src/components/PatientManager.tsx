@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Calendar, User, AlertCircle, CheckCircle, Printer } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Calendar, User, AlertCircle, CheckCircle, Printer, ArrowRight } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { canDeliverTreatment, getNextDeliveryDay, getLutetiumAdmissionDate, getLutetiumDischargeDate, getLuPsmaAdmissionDate, getLuPsmaDischargeDate, formatDateToLocalString, areAllDatesBusinessDays } from '../utils/dateHelpers';
 import { PatientForm } from './patient/PatientForm';
 import { OccupancyStats } from './patient/OccupancyStats';
 import { PatientList } from './patient/PatientList';
 import type { CycleUpdatePayload } from './patient/PatientList';
+import { UpcomingSchedule } from './patient/UpcomingSchedule';
 import { OccupancyCalendar } from './patient/OccupancyCalendar';
 import { OccupancyTimeline } from './patient/OccupancyTimeline';
 import { printPatientTimeline } from '../utils/printPatientTimeline';
@@ -22,6 +23,7 @@ function PatientManager() {
     cyclesPlanned: 6
   });
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [conflictSuggestion, setConflictSuggestion] = useState<{ date: string; cycles: number[] } | null>(null);
   const [loading, setLoading] = useState(false);
   const [occupancyView, setOccupancyView] = useState<'calendar' | 'timeline'>('calendar');
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -220,17 +222,19 @@ function PatientManager() {
     return preferredDate;
   };
 
-  const addPatient = async () => {
+  const addPatient = async (overrideStartDate?: string) => {
     if (!newPatient.name.trim()) {
       setMessage({ type: 'error', text: '患者名を入力してください' });
       return;
     }
 
+    const startDate = overrideStartDate ?? newPatient.startDate;
     setLoading(true);
+    setConflictSuggestion(null);
     try {
       const scheduledCycles = calculateCycles(
         newPatient.treatmentType,
-        newPatient.startDate,
+        startDate,
         newPatient.cyclesPlanned
       );
 
@@ -242,18 +246,22 @@ function PatientManager() {
       }
 
       if (conflicts.length > 0) {
-        const nextAvailable = findNextAvailableDate(newPatient.treatmentType, newPatient.startDate);
+        const nextAvailable = findNextAvailableDate(newPatient.treatmentType, startDate);
         setMessage({
           type: 'error',
-          text: `サイクル${conflicts.join(', ')}が他の患者と重複しています。次に利用可能な開始日: ${new Date(nextAvailable).toLocaleDateString('ja-JP')}`
+          text: `サイクル${conflicts.join(', ')}が他の患者と重複しています。`
         });
+        // Only offer the one-click fix if it actually moves to a new date
+        if (nextAvailable !== startDate) {
+          setConflictSuggestion({ date: nextAvailable, cycles: conflicts });
+        }
         return;
       }
 
       await invoke('add_patient', {
         patientName: newPatient.name,
         treatmentType: newPatient.treatmentType,
-        startDate: newPatient.startDate,
+        startDate,
         cyclesPlanned: newPatient.cyclesPlanned,
         cycles: scheduledCycles,
       });
@@ -274,6 +282,12 @@ function PatientManager() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const applyConflictSuggestion = () => {
+    if (!conflictSuggestion) return;
+    setNewPatient(prev => ({ ...prev, startDate: conflictSuggestion.date }));
+    addPatient(conflictSuggestion.date);
   };
 
   const recalculateSubsequentCycles = async (
@@ -349,6 +363,38 @@ function PatientManager() {
       setMessage({ type: 'error', text: 'サイクルの更新に失敗しました' });
       throw error;
     }
+  };
+
+  const postponeCycle = async (cycleId: string, days: number, recalculate: boolean) => {
+    const cycle = cycles.find(c => c.id === cycleId);
+    if (!cycle) return;
+    const patient = patients.find(p => p.id === cycle.patient_id);
+    if (!patient) return;
+    const treatmentType = patient.treatment_type;
+
+    // Shift the scheduled date, then snap forward to the next valid delivery day
+    let newDate = new Date(cycle.scheduled_date);
+    newDate.setDate(newDate.getDate() + days);
+    let attempts = 0;
+    while (!canDeliverTreatment(newDate, treatmentType) && attempts < 365) {
+      newDate.setDate(newDate.getDate() + 1);
+      attempts++;
+    }
+
+    const admissionDate = treatmentType === 'lutetium'
+      ? getLutetiumAdmissionDate(newDate)
+      : getLuPsmaAdmissionDate(newDate);
+    const dischargeDate = treatmentType === 'lutetium'
+      ? getLutetiumDischargeDate(newDate)
+      : getLuPsmaDischargeDate(newDate);
+
+    await updateCycle(cycleId, {
+      scheduledDate: formatDateToLocalString(newDate),
+      admissionDate: formatDateToLocalString(admissionDate),
+      dischargeDate: formatDateToLocalString(dischargeDate),
+      status: cycle.status,
+      notes: cycle.notes,
+    }, recalculate);
   };
 
   const deletePatient = async (id: string) => {
@@ -464,6 +510,26 @@ function PatientManager() {
   const stats = getOccupancyStats();
   const occupiedSlots = getOccupiedDates();
 
+  const conflictingCycleIds = useMemo(() => {
+    const ids = new Set<string>();
+    const active = cycles.filter(c => c.status !== 'cancelled');
+    for (let i = 0; i < active.length; i++) {
+      const a = active[i];
+      const aAdmit = new Date(a.admission_date).getTime();
+      const aDischarge = new Date(a.discharge_date).getTime();
+      for (let j = i + 1; j < active.length; j++) {
+        const b = active[j];
+        const bAdmit = new Date(b.admission_date).getTime();
+        const bDischarge = new Date(b.discharge_date).getTime();
+        if (aAdmit <= bDischarge && aDischarge >= bAdmit) {
+          ids.add(a.id);
+          ids.add(b.id);
+        }
+      }
+    }
+    return ids;
+  }, [cycles]);
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -487,6 +553,34 @@ function PatientManager() {
           </div>
         )}
 
+        {conflictSuggestion && (
+          <div className="mb-4 p-4 rounded-lg bg-amber-50 border border-amber-200">
+            <p className="text-sm text-amber-800 mb-3">
+              他の患者と日程が重複しています。次に空いている開始日に自動でずらして追加できます：
+              <span className="font-bold ml-1">
+                {new Date(conflictSuggestion.date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}
+              </span>
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={applyConflictSuggestion}
+                disabled={loading}
+                className="px-4 py-2 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+              >
+                <ArrowRight className="w-4 h-4" />
+                この日程で追加
+              </button>
+              <button
+                onClick={() => setConflictSuggestion(null)}
+                disabled={loading}
+                className="px-4 py-2 text-sm bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                やめる
+              </button>
+            </div>
+          </div>
+        )}
+
         <OccupancyStats stats={stats} />
         <PatientForm
           newPatient={newPatient}
@@ -498,6 +592,15 @@ function PatientManager() {
         />
       </div>
 
+      {occupiedSlots.length > 0 && (
+        <UpcomingSchedule
+          patients={patients}
+          cycles={cycles}
+          treatmentInfo={TREATMENT_INFO}
+          conflictingCycleIds={conflictingCycleIds}
+        />
+      )}
+
       <PatientList
         patients={patients}
         cycles={cycles}
@@ -505,6 +608,7 @@ function PatientManager() {
         onDelete={deletePatient}
         onPrint={handlePrintPatient}
         onCycleUpdate={updateCycle}
+        onCyclePostpone={postponeCycle}
       />
 
       {occupiedSlots.length > 0 && (

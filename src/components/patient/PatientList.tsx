@@ -17,6 +17,7 @@ interface PatientListProps {
   onDelete: (id: string) => void;
   onPrint: (id: string) => void;
   onCycleUpdate: (id: string, update: CycleUpdatePayload, recalculate: boolean) => Promise<void>;
+  onCyclePostpone: (id: string, days: number, recalculate: boolean) => Promise<void>;
 }
 
 const STATUS_LABELS: Record<CycleStatus, string> = {
@@ -157,11 +158,25 @@ function CycleViewRow({
   cycle,
   isConflicting,
   onEdit,
+  onPostpone,
 }: {
   cycle: Cycle;
   isConflicting: boolean;
   onEdit: () => void;
+  onPostpone: (days: number) => Promise<void>;
 }) {
+  const [postponing, setPostponing] = useState(false);
+  const canPostpone = cycle.status === 'scheduled';
+
+  const handlePostpone = async (days: number) => {
+    setPostponing(true);
+    try {
+      await onPostpone(days);
+    } finally {
+      setPostponing(false);
+    }
+  };
+
   return (
     <tr className={`border-b border-gray-100 hover:bg-gray-50 ${isConflicting ? 'bg-red-50' : ''}`}>
       <td className="px-3 py-2 text-center text-sm font-medium text-gray-600">
@@ -188,13 +203,35 @@ function CycleViewRow({
         {cycle.notes || <span className="text-gray-300">—</span>}
       </td>
       <td className="px-3 py-2">
-        <button
-          onClick={onEdit}
-          title="編集"
-          className="p-1.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-        >
-          <Pencil className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-1 justify-end">
+          {canPostpone && (
+            <>
+              <button
+                onClick={() => handlePostpone(7)}
+                disabled={postponing}
+                title="この回以降を1週間延期"
+                className="px-1.5 py-0.5 text-xs rounded text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-40 transition-colors"
+              >
+                +7日
+              </button>
+              <button
+                onClick={() => handlePostpone(14)}
+                disabled={postponing}
+                title="この回以降を2週間延期"
+                className="px-1.5 py-0.5 text-xs rounded text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-40 transition-colors"
+              >
+                +14日
+              </button>
+            </>
+          )}
+          <button
+            onClick={onEdit}
+            title="編集"
+            className="p-1.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -207,6 +244,7 @@ export function PatientList({
   onDelete,
   onPrint,
   onCycleUpdate,
+  onCyclePostpone,
 }: PatientListProps) {
   const [expandedPatients, setExpandedPatients] = useState<Set<string>>(new Set());
   const [editingCycleId, setEditingCycleId] = useState<string | null>(null);
@@ -363,6 +401,7 @@ export function PatientList({
                             cycle={cycle}
                             isConflicting={conflictingCycleIds.has(cycle.id)}
                             onEdit={() => setEditingCycleId(cycle.id)}
+                            onPostpone={(days) => onCyclePostpone(cycle.id, days, true)}
                           />
                         )
                       )}
