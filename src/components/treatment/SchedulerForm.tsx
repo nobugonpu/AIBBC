@@ -33,8 +33,8 @@ export function SchedulerForm({
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
         <h3 className="font-semibold text-blue-900 mb-2">治療情報</h3>
         <ul className="text-sm text-blue-800 space-y-1">
-          <li>Lu-PSMA-617: 3日入院（投与前日入院、投与後2日）、6週間（42日）間隔で最大6回、治療期間約9か月</li>
-          <li>ルタテラ: 2日入院（投与前日入院、投与後1泊）、8週間（56日）間隔で最大4回、治療期間約6か月</li>
+          <li>Lu-PSMA-617: 2日入院（投与前日入院、投与後1日）、6週間（42日）間隔で最大6回、治療期間約9か月</li>
+          <li>ルタテラ: 2日入院（投与前日入院、投与後1日）、8週間（56日）間隔で最大4回、治療期間約6か月</li>
           <li>週キャパ制約: 1週間に最大1件のLu-177治療</li>
         </ul>
       </div>

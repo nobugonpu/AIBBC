@@ -47,7 +47,7 @@ function TreatmentScheduler() {
     const periodInDays = months * 30;
     const totalWeeks = Math.floor(periodInDays / 7);
 
-    const luPsmaStay = 3;
+    const luPsmaStay = 2;
     const luPsmaInterval = 42;
     const lutetiumStay = 2;
     const lutetiumInterval = 56;
