@@ -97,11 +97,12 @@ export const getLuPsmaAdmissionDate = (treatmentDate: Date): Date => {
 };
 
 /**
- * プルヴィクト：退院日（治療日の翌々日）
+ * プルヴィクト：退院日（治療日の翌日）
+ * 入院：投与前日、投与：治療日、退院：投与後1日
  */
 export const getLuPsmaDischargeDate = (treatmentDate: Date): Date => {
   const discharge = new Date(treatmentDate);
-  discharge.setDate(discharge.getDate() + 2);
+  discharge.setDate(discharge.getDate() + 1);
   return discharge;
 };
 
@@ -139,9 +140,16 @@ export const getNonDeliveryPeriods2026 = (): Array<{ start: string; end: string;
   ];
 };
 
+export const getNonDeliveryPeriods2027 = (): Array<{ start: string; end: string; name: string }> => {
+  return [
+    { start: '2027-08-09', end: '2027-08-13', name: 'お盆休み' },
+    { start: '2027-12-28', end: '2028-01-03', name: '年末年始' }
+  ];
+};
+
 export const isInNonDeliveryPeriod = (date: Date): boolean => {
   const dateStr = date.toISOString().split('T')[0];
-  const allPeriods = [...getNonDeliveryPeriods2025(), ...getNonDeliveryPeriods2026()];
+  const allPeriods = [...getNonDeliveryPeriods2025(), ...getNonDeliveryPeriods2026(), ...getNonDeliveryPeriods2027()];
 
   for (const period of allPeriods) {
     if (dateStr >= period.start && dateStr <= period.end) {
@@ -251,5 +259,27 @@ export const getJapaneseHolidays2026 = (): Array<{ date: string; name: string }>
     { date: '2026-10-12', name: 'スポーツの日' },
     { date: '2026-11-03', name: '文化の日' },
     { date: '2026-11-23', name: '勤労感謝の日' }
+  ];
+};
+
+export const getJapaneseHolidays2027 = (): Array<{ date: string; name: string }> => {
+  return [
+    { date: '2027-01-01', name: '元日' },
+    { date: '2027-01-11', name: '成人の日' },
+    { date: '2027-02-11', name: '建国記念の日' },
+    { date: '2027-02-23', name: '天皇誕生日' },
+    { date: '2027-03-21', name: '春分の日' },
+    { date: '2027-03-22', name: '振替休日' },
+    { date: '2027-04-29', name: '昭和の日' },
+    { date: '2027-05-03', name: '憲法記念日' },
+    { date: '2027-05-04', name: 'みどりの日' },
+    { date: '2027-05-05', name: 'こどもの日' },
+    { date: '2027-07-19', name: '海の日' },
+    { date: '2027-08-11', name: '山の日' },
+    { date: '2027-09-20', name: '敬老の日' },
+    { date: '2027-09-23', name: '秋分の日' },
+    { date: '2027-10-11', name: 'スポーツの日' },
+    { date: '2027-11-03', name: '文化の日' },
+    { date: '2027-11-23', name: '勤労感謝の日' }
   ];
 };

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Clock, Printer, Trash2, ChevronDown, ChevronUp, Pencil, Check, X } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Clock, Printer, Trash2, ChevronDown, ChevronUp, Pencil, Check, X, AlertTriangle } from 'lucide-react';
 import type { Patient, Cycle, TreatmentInfoMap, CycleStatus } from '../../shared/contracts/patient';
 
 export interface CycleUpdatePayload {
@@ -16,7 +16,7 @@ interface PatientListProps {
   treatmentInfo: TreatmentInfoMap;
   onDelete: (id: string) => void;
   onPrint: (id: string) => void;
-  onCycleUpdate: (id: string, update: CycleUpdatePayload) => Promise<void>;
+  onCycleUpdate: (id: string, update: CycleUpdatePayload, recalculate: boolean) => Promise<void>;
 }
 
 const STATUS_LABELS: Record<CycleStatus, string> = {
@@ -33,11 +33,13 @@ const STATUS_COLORS: Record<CycleStatus, string> = {
 
 function CycleEditRow({
   cycle,
+  hasSubsequent,
   onSave,
   onCancel,
 }: {
   cycle: Cycle;
-  onSave: (update: CycleUpdatePayload) => Promise<void>;
+  hasSubsequent: boolean;
+  onSave: (update: CycleUpdatePayload, recalculate: boolean) => Promise<void>;
   onCancel: () => void;
 }) {
   const [values, setValues] = useState<CycleUpdatePayload>({
@@ -47,109 +49,134 @@ function CycleEditRow({
     status: cycle.status,
     notes: cycle.notes ?? '',
   });
+  const [recalculate, setRecalculate] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const dateChanged = values.scheduledDate !== cycle.scheduled_date;
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave(values);
+      await onSave(values, recalculate && dateChanged);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <tr className="bg-amber-50">
-      <td className="px-3 py-2 text-center text-sm font-medium text-gray-700">
-        第{cycle.cycle_number}
-      </td>
-      <td className="px-3 py-2">
-        <input
-          type="date"
-          value={values.scheduledDate}
-          onChange={e => setValues(v => ({ ...v, scheduledDate: e.target.value }))}
-          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-        />
-      </td>
-      <td className="px-3 py-2">
-        <input
-          type="date"
-          value={values.admissionDate}
-          onChange={e => setValues(v => ({ ...v, admissionDate: e.target.value }))}
-          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-        />
-      </td>
-      <td className="px-3 py-2">
-        <input
-          type="date"
-          value={values.dischargeDate}
-          onChange={e => setValues(v => ({ ...v, dischargeDate: e.target.value }))}
-          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-        />
-      </td>
-      <td className="px-3 py-2">
-        <select
-          value={values.status}
-          onChange={e => setValues(v => ({ ...v, status: e.target.value as CycleStatus }))}
-          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-        >
-          <option value="scheduled">予定</option>
-          <option value="completed">完了</option>
-          <option value="cancelled">キャンセル</option>
-        </select>
-      </td>
-      <td className="px-3 py-2">
-        <input
-          type="text"
-          value={values.notes}
-          onChange={e => setValues(v => ({ ...v, notes: e.target.value }))}
-          placeholder="メモを入力"
-          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-        />
-      </td>
-      <td className="px-3 py-2">
-        <div className="flex gap-1">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            title="保存"
-            className="p-1.5 rounded text-green-600 hover:bg-green-100 disabled:opacity-40 transition-colors"
+    <>
+      <tr className="bg-amber-50">
+        <td className="px-3 py-2 text-center text-sm font-medium text-gray-700">
+          第{cycle.cycle_number}
+        </td>
+        <td className="px-3 py-2">
+          <input
+            type="date"
+            value={values.scheduledDate}
+            onChange={e => setValues(v => ({ ...v, scheduledDate: e.target.value }))}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+          />
+        </td>
+        <td className="px-3 py-2">
+          <input
+            type="date"
+            value={values.admissionDate}
+            onChange={e => setValues(v => ({ ...v, admissionDate: e.target.value }))}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+          />
+        </td>
+        <td className="px-3 py-2">
+          <input
+            type="date"
+            value={values.dischargeDate}
+            onChange={e => setValues(v => ({ ...v, dischargeDate: e.target.value }))}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+          />
+        </td>
+        <td className="px-3 py-2">
+          <select
+            value={values.status}
+            onChange={e => setValues(v => ({ ...v, status: e.target.value as CycleStatus }))}
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
           >
-            <Check className="w-4 h-4" />
-          </button>
-          <button
-            onClick={onCancel}
-            disabled={saving}
-            title="キャンセル"
-            className="p-1.5 rounded text-red-500 hover:bg-red-100 disabled:opacity-40 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </td>
-    </tr>
+            <option value="scheduled">予定</option>
+            <option value="completed">完了</option>
+            <option value="cancelled">キャンセル</option>
+          </select>
+        </td>
+        <td className="px-3 py-2">
+          <input
+            type="text"
+            value={values.notes}
+            onChange={e => setValues(v => ({ ...v, notes: e.target.value }))}
+            placeholder="メモを入力"
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+          />
+        </td>
+        <td className="px-3 py-2">
+          <div className="flex gap-1">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              title="保存"
+              className="p-1.5 rounded text-green-600 hover:bg-green-100 disabled:opacity-40 transition-colors"
+            >
+              <Check className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onCancel}
+              disabled={saving}
+              title="キャンセル"
+              className="p-1.5 rounded text-red-500 hover:bg-red-100 disabled:opacity-40 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </td>
+      </tr>
+      {hasSubsequent && dateChanged && (
+        <tr className="bg-amber-50 border-t border-amber-200">
+          <td colSpan={7} className="px-4 pb-2 pt-1">
+            <label className="flex items-center gap-2 text-xs text-amber-800 cursor-pointer select-none w-fit">
+              <input
+                type="checkbox"
+                checked={recalculate}
+                onChange={e => setRecalculate(e.target.checked)}
+                className="rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+              />
+              後続サイクルを治療間隔から自動再計算する
+            </label>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
 function CycleViewRow({
   cycle,
+  isConflicting,
   onEdit,
 }: {
   cycle: Cycle;
+  isConflicting: boolean;
   onEdit: () => void;
 }) {
   return (
-    <tr className="border-b border-gray-100 hover:bg-gray-50">
+    <tr className={`border-b border-gray-100 hover:bg-gray-50 ${isConflicting ? 'bg-red-50' : ''}`}>
       <td className="px-3 py-2 text-center text-sm font-medium text-gray-600">
         第{cycle.cycle_number}
+        {isConflicting && (
+          <AlertTriangle className="w-3.5 h-3.5 text-red-500 inline ml-1" title="他の患者と日程が重複しています" />
+        )}
       </td>
       <td className="px-3 py-2 text-sm text-gray-700">
         {new Date(cycle.scheduled_date).toLocaleDateString('ja-JP')}
       </td>
-      <td className="px-3 py-2 text-sm text-gray-700">
+      <td className={`px-3 py-2 text-sm ${isConflicting ? 'text-red-700 font-medium' : 'text-gray-700'}`}>
         {new Date(cycle.admission_date).toLocaleDateString('ja-JP')}
       </td>
-      <td className="px-3 py-2 text-sm text-gray-700">
+      <td className={`px-3 py-2 text-sm ${isConflicting ? 'text-red-700 font-medium' : 'text-gray-700'}`}>
         {new Date(cycle.discharge_date).toLocaleDateString('ja-JP')}
       </td>
       <td className="px-3 py-2">
@@ -184,6 +211,26 @@ export function PatientList({
   const [expandedPatients, setExpandedPatients] = useState<Set<string>>(new Set());
   const [editingCycleId, setEditingCycleId] = useState<string | null>(null);
 
+  const conflictingCycleIds = useMemo(() => {
+    const ids = new Set<string>();
+    const active = cycles.filter(c => c.status !== 'cancelled');
+    for (let i = 0; i < active.length; i++) {
+      const a = active[i];
+      const aAdmit = new Date(a.admission_date).getTime();
+      const aDischarge = new Date(a.discharge_date).getTime();
+      for (let j = i + 1; j < active.length; j++) {
+        const b = active[j];
+        const bAdmit = new Date(b.admission_date).getTime();
+        const bDischarge = new Date(b.discharge_date).getTime();
+        if (aAdmit <= bDischarge && aDischarge >= bAdmit) {
+          ids.add(a.id);
+          ids.add(b.id);
+        }
+      }
+    }
+    return ids;
+  }, [cycles]);
+
   const toggleExpand = (patientId: string) => {
     setExpandedPatients(prev => {
       const next = new Set(prev);
@@ -197,8 +244,8 @@ export function PatientList({
     });
   };
 
-  const handleSaveCycle = async (cycleId: string, update: CycleUpdatePayload) => {
-    await onCycleUpdate(cycleId, update);
+  const handleSaveCycle = async (cycleId: string, update: CycleUpdatePayload, recalculate: boolean) => {
+    await onCycleUpdate(cycleId, update, recalculate);
     setEditingCycleId(null);
   };
 
@@ -236,6 +283,12 @@ export function PatientList({
                       }`}>
                         {info.name}
                       </span>
+                      {patientCycles.some(c => conflictingCycleIds.has(c.id)) && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                          <AlertTriangle className="w-3 h-3" />
+                          日程重複あり
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm text-gray-600 space-y-1">
                       <div>開始日: {new Date(patient.start_date).toLocaleDateString('ja-JP')}</div>
@@ -300,13 +353,15 @@ export function PatientList({
                           <CycleEditRow
                             key={cycle.id}
                             cycle={cycle}
-                            onSave={update => handleSaveCycle(cycle.id, update)}
+                            hasSubsequent={patientCycles.some(c => c.cycle_number > cycle.cycle_number && c.status !== 'cancelled')}
+                            onSave={(update, recalculate) => handleSaveCycle(cycle.id, update, recalculate)}
                             onCancel={() => setEditingCycleId(null)}
                           />
                         ) : (
                           <CycleViewRow
                             key={cycle.id}
                             cycle={cycle}
+                            isConflicting={conflictingCycleIds.has(cycle.id)}
                             onEdit={() => setEditingCycleId(cycle.id)}
                           />
                         )

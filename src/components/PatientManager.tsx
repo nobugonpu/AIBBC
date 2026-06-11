@@ -9,6 +9,7 @@ import type { CycleUpdatePayload } from './patient/PatientList';
 import { OccupancyCalendar } from './patient/OccupancyCalendar';
 import { OccupancyTimeline } from './patient/OccupancyTimeline';
 import { printPatientTimeline } from '../utils/printPatientTimeline';
+import { printMonthlyOccupancy } from '../utils/printMonthlyOccupancy';
 import type { Patient, Cycle, OccupiedSlot, TreatmentInfoMap } from '../shared/contracts/patient';
 
 function PatientManager() {
@@ -28,7 +29,7 @@ function PatientManager() {
   const TREATMENT_INFO: TreatmentInfoMap = {
     'lu-psma': {
       name: 'プルヴィクト（Lu-PSMA-617）',
-      stayDays: 4,
+      stayDays: 3,
       intervalDays: 42,
       maxCycles: 6,
       color: 'blue',
@@ -275,12 +276,74 @@ function PatientManager() {
     }
   };
 
-  const updateCycle = async (id: string, update: CycleUpdatePayload) => {
+  const recalculateSubsequentCycles = async (
+    patientId: string,
+    fromCycleNumber: number,
+    newScheduledDate: string
+  ): Promise<void> => {
+    const patient = patients.find(p => p.id === patientId);
+    if (!patient) return;
+    const treatmentType = patient.treatment_type;
+    const info = TREATMENT_INFO[treatmentType];
+
+    const subsequentCycles = cycles
+      .filter(c => c.patient_id === patientId && c.cycle_number > fromCycleNumber)
+      .sort((a, b) => a.cycle_number - b.cycle_number);
+
+    if (subsequentCycles.length === 0) return;
+
+    let prevDate = new Date(newScheduledDate);
+
+    for (const cycle of subsequentCycles) {
+      if (cycle.status === 'cancelled') continue;
+
+      let nextDate = new Date(prevDate);
+      nextDate.setDate(nextDate.getDate() + info.intervalDays);
+
+      let attempts = 0;
+      while (!canDeliverTreatment(nextDate, treatmentType) && attempts < 365) {
+        nextDate.setDate(nextDate.getDate() + 1);
+        attempts++;
+      }
+
+      const admissionDate = treatmentType === 'lutetium'
+        ? getLutetiumAdmissionDate(nextDate)
+        : getLuPsmaAdmissionDate(nextDate);
+      const dischargeDate = treatmentType === 'lutetium'
+        ? getLutetiumDischargeDate(nextDate)
+        : getLuPsmaDischargeDate(nextDate);
+
+      await invoke<Cycle>('update_cycle', {
+        id: cycle.id,
+        update: {
+          scheduledDate: formatDateToLocalString(nextDate),
+          admissionDate: formatDateToLocalString(admissionDate),
+          dischargeDate: formatDateToLocalString(dischargeDate),
+          status: cycle.status,
+          notes: cycle.notes,
+        }
+      });
+
+      prevDate = nextDate;
+    }
+
+    await loadCycles();
+    await loadPatients();
+  };
+
+  const updateCycle = async (id: string, update: CycleUpdatePayload, recalculate: boolean) => {
     try {
+      const original = cycles.find(c => c.id === id);
       const updatedCycle = await invoke<Cycle>('update_cycle', { id, update });
       setCycles(prev => prev.map(c => c.id === id ? updatedCycle : c));
-      await loadPatients();
-      setMessage({ type: 'success', text: 'サイクルを更新しました' });
+
+      if (recalculate && original && update.scheduledDate !== original.scheduled_date) {
+        await recalculateSubsequentCycles(original.patient_id, original.cycle_number, update.scheduledDate);
+        setMessage({ type: 'success', text: 'サイクルを更新し、後続サイクルを再計算しました' });
+      } else {
+        await loadPatients();
+        setMessage({ type: 'success', text: 'サイクルを更新しました' });
+      }
     } catch (error) {
       console.error('Error updating cycle:', error);
       setMessage({ type: 'error', text: 'サイクルの更新に失敗しました' });
@@ -347,6 +410,16 @@ function PatientManager() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handlePrintMonthly = () => {
+    printMonthlyOccupancy(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() + 1,
+      patients,
+      cycles,
+      TREATMENT_INFO
+    );
   };
 
   const handlePrintPatient = (patientId: string) => {
@@ -442,6 +515,13 @@ function PatientManager() {
               病室占有スケジュール
             </h3>
             <div className="flex gap-2 no-print">
+              <button
+                onClick={handlePrintMonthly}
+                className="px-4 py-2 text-sm rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center gap-2"
+              >
+                <Printer className="w-4 h-4" />
+                月次帳票
+              </button>
               <button
                 onClick={handlePrint}
                 className="px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors flex items-center gap-2"
