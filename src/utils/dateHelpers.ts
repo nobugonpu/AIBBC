@@ -166,6 +166,34 @@ export const isDayAfterHoliday = (date: Date): boolean => {
   return checkIsHoliday(previousDay) || isWeekend(previousDay);
 };
 
+/**
+ * その日を含む週（月曜始まり）の月曜日を返す
+ */
+export const getMondayOfWeek = (date: Date): Date => {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=日, 1=月, ... 6=土
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diffToMonday);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+/**
+ * 月曜・火曜・水曜のいずれかが祝日に該当する週は治療対象外とする。
+ * （その週の月曜日を基準に、月〜水の3日間に祝日があるか判定）
+ */
+export const isWeekExcludedByHoliday = (date: Date): boolean => {
+  const monday = getMondayOfWeek(date);
+  for (let i = 0; i < 3; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    if (checkIsHoliday(d)) {
+      return true;
+    }
+  }
+  return false;
+};
+
 export const hasNonBusinessDayBetween = (startDate: Date, endDate: Date): boolean => {
   const current = new Date(startDate);
 
@@ -188,6 +216,9 @@ export const canDeliverTreatment = (
   if (isInNonDeliveryPeriod(date)) return false;
 
   if (isDayAfterHoliday(date)) return false;
+
+  // 月・火・水のいずれかが祝日の週は、週全体を治療対象外とする
+  if (isWeekExcludedByHoliday(date)) return false;
 
   if (treatmentType === 'lutetium') {
     return isLutetiumDeliveryDay(date);

@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { isHoliday as checkIsHoliday } from '../../utils/holidays';
+import { isWeekExcludedByHoliday } from '../../utils/dateHelpers';
 import type { OccupiedSlot } from '../../shared/contracts/patient';
 
 interface OccupancyCalendarProps {
@@ -79,15 +80,29 @@ export function OccupancyCalendar({ currentMonth, onPreviousMonth, onNextMonth, 
           const isToday = day.toDateString() === new Date().toDateString();
           const isWeekendDay = day.getDay() === 0 || day.getDay() === 6;
           const isHolidayDay = checkIsHoliday(day);
+          // 月・火・水が祝日の週は治療対象外（平日のみ視覚的に示す）
+          const isExcludedWeekday = !isWeekendDay && !isHolidayDay && isWeekExcludedByHoliday(day);
 
           return (
             <div
               key={day.toISOString()}
               className={`calendar-day ${isToday ? 'today' : ''} ${isWeekendDay || isHolidayDay ? 'weekend' : ''}`}
+              style={isExcludedWeekday ? {
+                background: 'repeating-linear-gradient(45deg, #f9fafb, #f9fafb 6px, #f3f4f6 6px, #f3f4f6 12px)'
+              } : undefined}
             >
               <div className="calendar-day-number">
                 {day.getDate()}
                 {isHolidayDay && <span className="holiday-badge">祝</span>}
+                {isExcludedWeekday && (
+                  <span
+                    className="holiday-badge"
+                    style={{ background: '#9ca3af' }}
+                    title="月・火・水が祝日の週のため治療対象外"
+                  >
+                    対象外
+                  </span>
+                )}
               </div>
               <div className="calendar-treatments">
                 {treatments.map((treatment, idx) => {
@@ -170,6 +185,17 @@ export function OccupancyCalendar({ currentMonth, onPreviousMonth, onNextMonth, 
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-indigo-500"></div>
               <span>退院日</span>
+            </div>
+          </div>
+
+          <div className="font-semibold text-gray-700 mt-4">その他</div>
+          <div className="flex flex-wrap gap-4 text-sm ml-4">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-4 h-4 rounded border border-gray-300"
+                style={{ background: 'repeating-linear-gradient(45deg, #f9fafb, #f9fafb 3px, #f3f4f6 3px, #f3f4f6 6px)' }}
+              ></div>
+              <span>治療対象外週（月・火・水が祝日）</span>
             </div>
           </div>
         </div>
