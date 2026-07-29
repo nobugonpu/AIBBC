@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Clock, Printer, Trash2, ChevronDown, ChevronUp, Pencil, Check, X, AlertTriangle } from 'lucide-react';
+import { Clock, Printer, Trash2, ChevronDown, ChevronUp, Pencil, Check, X, AlertTriangle, FileText } from 'lucide-react';
 import type { Patient, Cycle, TreatmentInfoMap, CycleStatus } from '../../shared/contracts/patient';
 
 export interface CycleUpdatePayload {
@@ -16,6 +16,7 @@ interface PatientListProps {
   treatmentInfo: TreatmentInfoMap;
   onDelete: (id: string) => void;
   onPrint: (id: string) => void;
+  onPrintForPatient: (id: string) => void;
   onCycleUpdate: (id: string, update: CycleUpdatePayload, recalculate: boolean) => Promise<void>;
   onCyclePostpone: (id: string, days: number, recalculate: boolean) => Promise<void>;
 }
@@ -243,6 +244,7 @@ export function PatientList({
   treatmentInfo,
   onDelete,
   onPrint,
+  onPrintForPatient,
   onCycleUpdate,
   onCyclePostpone,
 }: PatientListProps) {
@@ -352,8 +354,17 @@ export function PatientList({
                       サイクル（{patientCycles.length}）
                     </button>
                     <button
+                      onClick={() => onPrintForPatient(patient.id)}
+                      className="px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                      title="患者さんにお渡しする、やさしい予定表を印刷"
+                    >
+                      <FileText className="w-4 h-4" />
+                      患者用予定表
+                    </button>
+                    <button
                       onClick={() => onPrint(patient.id)}
                       className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                      title="スタッフ用の詳細スケジュールを印刷"
                     >
                       <Printer className="w-4 h-4" />
                       印刷

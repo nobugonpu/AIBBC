@@ -10,6 +10,7 @@ import { UpcomingSchedule } from './patient/UpcomingSchedule';
 import { OccupancyCalendar } from './patient/OccupancyCalendar';
 import { OccupancyTimeline } from './patient/OccupancyTimeline';
 import { printPatientTimeline } from '../utils/printPatientTimeline';
+import { printPatientSchedule } from '../utils/printPatientSchedule';
 import { printMonthlyOccupancy } from '../utils/printMonthlyOccupancy';
 import type { Patient, Cycle, OccupiedSlot, TreatmentInfoMap } from '../shared/contracts/patient';
 
@@ -480,6 +481,18 @@ function PatientManager() {
     printPatientTimeline(patient, patientCycles, info);
   };
 
+  const handlePrintPatientSchedule = (patientId: string) => {
+    const patient = patients.find(p => p.id === patientId);
+    if (!patient) return;
+
+    const patientCycles = cycles.filter(c => c.patient_id === patientId).sort((a, b) =>
+      new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime()
+    );
+
+    const info = TREATMENT_INFO[patient.treatment_type];
+    printPatientSchedule(patient, patientCycles, info);
+  };
+
   const previousMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   };
@@ -607,6 +620,7 @@ function PatientManager() {
         treatmentInfo={TREATMENT_INFO}
         onDelete={deletePatient}
         onPrint={handlePrintPatient}
+        onPrintForPatient={handlePrintPatientSchedule}
         onCycleUpdate={updateCycle}
         onCyclePostpone={postponeCycle}
       />
