@@ -85,3 +85,42 @@ pub fn lock(state: State<'_, AppState>) -> AppResult<()> {
     *guard = DbState::Locked;
     Ok(())
 }
+
+/// Changes the password: verifies the current password, then re-encrypts
+/// (rekeys) the existing database in place with a key derived from the new
+/// password. The salt is reused. The live session is updated to the new key,
+/// so the user stays unlocked. Existing data is preserved.
+#[tauri::command]
+pub fn change_password(
+    current_password: String,
+    new_password: String,
+    state: State<'_, AppState>,
+) -> AppResult<()> {
+    if !state.paths.salt_path.exists() {
+        return Err(AppError::NotConfigured);
+    }
+    if new_password.len() < 8 {
+        return Err(AppError::Other(
+            "パスワードは8文字以上にしてください".into(),
+        ));
+    }
+
+    let salt_hex = fs::read_to_string(&state.paths.salt_path)?;
+    let salt = hex::decode(salt_hex.trim())?;
+
+    // Verify the current password by opening the DB with its derived key.
+    // open_encrypted returns InvalidPassword if the key is wrong.
+    let old_key = derive_key(&current_password, &salt);
+    let conn = open_encrypted(&state.paths.db_path, &old_key)?;
+
+    // Re-encrypt the whole database with the new key (same salt).
+    let new_key = derive_key(&new_password, &salt);
+    let new_hex = hex::encode(new_key.0);
+    let rekey = format!("PRAGMA rekey = \"x'{}'\";", new_hex);
+    conn.execute_batch(&rekey)?;
+
+    // Swap the live session to the rekeyed connection and new key.
+    let mut guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
+    *guard = DbState::Unlocked { conn, key: new_key };
+    Ok(())
+}

@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "AIBBC - RI治療スケジューリング",
+        "title": "Lu-177治療患者スケジューラ",
         "width": 1280,
         "height": 800,
         "minWidth": 960,

@@ -77,7 +77,7 @@ export default function LocalAuth({ onUnlocked }: Props) {
               )}
             </div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {isSetup ? 'AIBBC ロック中' : '初回セットアップ'}
+              {isSetup ? 'Lu-177治療患者スケジューラ' : '初回セットアップ'}
             </h1>
             <p className="text-gray-500 text-sm mt-2">
               {isSetup

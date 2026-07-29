@@ -24,6 +24,7 @@ pub fn run() {
             commands::auth::setup_password,
             commands::auth::unlock,
             commands::auth::lock,
+            commands::auth::change_password,
             // patients
             commands::patients::get_patients,
             commands::patients::get_cycles,

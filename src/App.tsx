@@ -7,6 +7,7 @@ import Home from './components/Home';
 import TreatmentScheduler from './components/TreatmentScheduler';
 import PatientManager from './components/PatientManager';
 import { NavigationBar } from './components/app/NavigationBar';
+import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { CheckCircle, AlertCircle, Upload } from 'lucide-react';
 
 type Page = 'home' | 'upload' | 'gallery' | 'treatment' | 'patients';
@@ -130,6 +131,7 @@ function AppContent() {
   const { unlocked, unlock, lock } = useAuth();
   const [currentPage, setCurrentPage] = useState<Page>('treatment');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   if (!unlocked) {
     return <LocalAuth onUnlocked={unlock} />;
@@ -164,8 +166,19 @@ function AppContent() {
             currentPage={currentPage}
             onPageChange={setCurrentPage}
             onSignOut={lock}
+            onChangePassword={() => setShowChangePassword(true)}
           />
         </div>
+
+        {showChangePassword && (
+          <ChangePasswordModal
+            onClose={() => setShowChangePassword(false)}
+            onChanged={() => {
+              setShowChangePassword(false);
+              setMessage({ type: 'success', text: 'パスワードを変更しました' });
+            }}
+          />
+        )}
 
         {message && (
           <div

@@ -1,4 +1,4 @@
-import { LogOut, Upload, Home as HomeIcon, Images, Calendar, Users } from 'lucide-react';
+import { LogOut, Upload, Home as HomeIcon, Images, Calendar, Users, KeyRound } from 'lucide-react';
 
 type Page = 'home' | 'upload' | 'gallery' | 'treatment' | 'patients';
 
@@ -6,9 +6,10 @@ interface NavigationBarProps {
   currentPage: Page;
   onPageChange: (page: Page) => void;
   onSignOut: () => void;
+  onChangePassword: () => void;
 }
 
-export function NavigationBar({ currentPage, onPageChange, onSignOut }: NavigationBarProps) {
+export function NavigationBar({ currentPage, onPageChange, onSignOut, onChangePassword }: NavigationBarProps) {
   return (
     <div className="flex items-center gap-3">
       <nav className="flex gap-2 bg-white border border-gray-300 rounded-lg p-1 shadow-sm">
@@ -68,6 +69,13 @@ export function NavigationBar({ currentPage, onPageChange, onSignOut }: Navigati
           Patients
         </button>
       </nav>
+      <button
+        onClick={onChangePassword}
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors shadow-sm"
+      >
+        <KeyRound className="h-4 w-4" />
+        パスワード変更
+      </button>
       <button
         onClick={onSignOut}
         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors shadow-sm"
