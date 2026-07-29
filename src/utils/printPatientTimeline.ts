@@ -1,9 +1,7 @@
 import type { Patient, Cycle, TreatmentInfo } from '../shared/contracts/patient';
+import { printHtml } from './printHtml';
 
 export function printPatientTimeline(patient: Patient, cycles: Cycle[], info: TreatmentInfo) {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
-
   const html = `
     <!DOCTYPE html>
     <html>
@@ -143,19 +141,9 @@ export function printPatientTimeline(patient: Patient, cycles: Cycle[], info: Tr
         <div class="footer">
           印刷日: ${new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}
         </div>
-
-        <script>
-          window.onload = function() {
-            window.print();
-            window.onafterprint = function() {
-              window.close();
-            };
-          };
-        </script>
       </body>
     </html>
   `;
 
-  printWindow.document.write(html);
-  printWindow.document.close();
+  printHtml(html);
 }

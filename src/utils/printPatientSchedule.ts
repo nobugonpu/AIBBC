@@ -1,4 +1,5 @@
 import type { Patient, Cycle, TreatmentInfo } from '../shared/contracts/patient';
+import { printHtml } from './printHtml';
 
 /**
  * 患者さん本人がご自身の治療予定を把握するための、やさしい表現の予定表を印刷します。
@@ -6,9 +7,6 @@ import type { Patient, Cycle, TreatmentInfo } from '../shared/contracts/patient'
  * 入院日・治療日・退院日と持ち物・注意事項をまとめます。
  */
 export function printPatientSchedule(patient: Patient, cycles: Cycle[], info: TreatmentInfo) {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
-
   const days = ['日', '月', '火', '水', '木', '金', '土'];
   const fmt = (s: string) => {
     const d = new Date(s);
@@ -138,15 +136,10 @@ export function printPatientSchedule(patient: Patient, cycles: Cycle[], info: Tr
   </div>
 
   <div class="print-date">発行日：${new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-
-  <script>
-    window.onload = function () { window.print(); window.onafterprint = function () { window.close(); }; };
-  </script>
 </body>
 </html>`;
 
-  printWindow.document.write(html);
-  printWindow.document.close();
+  printHtml(html);
 }
 
 function escapeHtml(s: string): string {

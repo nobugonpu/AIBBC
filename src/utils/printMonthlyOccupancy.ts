@@ -1,4 +1,5 @@
 import type { Patient, Cycle, TreatmentInfoMap } from '../shared/contracts/patient';
+import { printHtml } from './printHtml';
 
 export function printMonthlyOccupancy(
   year: number,
@@ -7,9 +8,6 @@ export function printMonthlyOccupancy(
   cycles: Cycle[],
   treatmentInfo: TreatmentInfoMap
 ) {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
-
   const firstDay = new Date(year, month - 1, 1);
   const lastDay = new Date(year, month, 0);
   const monthLabel = `${year}年${month}月`;
@@ -122,12 +120,8 @@ export function printMonthlyOccupancy(
     <tbody>${rowsHtml}</tbody>
   </table>
   <div class="footer">印刷日: ${new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-  <script>
-    window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
-  </script>
 </body>
 </html>`;
 
-  printWindow.document.write(html);
-  printWindow.document.close();
+  printHtml(html);
 }
