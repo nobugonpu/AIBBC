@@ -1,5 +1,6 @@
 {
-  "productName": "AIBBC",
+  "productName": "Lu-177治療患者スケジューラ",
+  "mainBinaryName": "Lu177-Scheduler",
   "version": "0.1.0",
   "identifier": "com.nobugonpu.aibbc",
   "build": {
