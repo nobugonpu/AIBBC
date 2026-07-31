@@ -106,25 +106,25 @@ function PatientManager() {
       dischargeDate: string;
     }[] = [];
 
-    // Start no earlier than the requested date (findFreeTreatmentSlot also
-    // clamps to today). Each cycle is placed into the earliest genuinely free
-    // slot, so it never lands in the past and never overlaps another patient.
-    let searchFrom = new Date(startDate);
+    // Each cycle is placed near its ideal date: cycle 1 at the requested start,
+    // each next one intervalDays after the previous. placeCycle keeps the shift
+    // within 2 weeks and never uses a past date.
+    let idealDate = new Date(startDate);
 
     for (let i = 0; i < cyclesPlanned; i++) {
-      const slot = findFreeTreatmentSlot(treatmentType, searchFrom);
-      if (!slot) break; // no free slot within the search horizon
+      const placed = placeCycle(treatmentType, idealDate);
+      if (!placed) break;
 
       scheduledCycles.push({
         cycleNumber: i + 1,
-        scheduledDate: formatDateToLocalString(slot.treat),
-        admissionDate: formatDateToLocalString(slot.admit),
-        dischargeDate: formatDateToLocalString(slot.discharge),
+        scheduledDate: formatDateToLocalString(placed.treat),
+        admissionDate: formatDateToLocalString(placed.admit),
+        dischargeDate: formatDateToLocalString(placed.discharge),
       });
 
-      // Next cycle can't be earlier than intervalDays after this treatment.
-      searchFrom = new Date(slot.treat);
-      searchFrom.setDate(searchFrom.getDate() + info.intervalDays);
+      // The next cycle's ideal date is intervalDays after this one.
+      idealDate = new Date(placed.treat);
+      idealDate.setDate(idealDate.getDate() + info.intervalDays);
     }
 
     return scheduledCycles;
@@ -154,48 +154,88 @@ function PatientManager() {
     return true;
   };
 
-  // Finds the earliest treatment date that satisfies ALL rules:
-  //  - today or later (never schedules in the past)
-  //  - a valid delivery day (weekday/holiday/non-delivery/week-exclusion rules)
-  //  - only one Lu-177 treatment per week (excluding the given cycle)
-  //  - admission/treatment/discharge all business days
-  //  - the bed is free — no overlap with any other patient (excluding the given cycle)
-  // This enforces first-come-first-served: existing bookings are fixed and the
-  // new/edited cycle is always placed forward into a genuinely free slot.
-  const findFreeTreatmentSlot = (
+  type Slot = { treat: Date; admit: Date; discharge: Date };
+
+  // Auto-shifts are capped here: the schedule may slip by at most this many
+  // days to dodge holidays / other patients' bookings. Beyond this we do NOT
+  // keep pushing the date out (which would stretch the treatment interval);
+  // instead the cycle stays near its ideal date and is flagged as a conflict
+  // for a human to resolve.
+  const MAX_SHIFT_DAYS = 14;
+
+  const stayDatesFor = (treatmentType: 'lu-psma' | 'lutetium', treat: Date): Slot => {
+    const admit = treatmentType === 'lutetium'
+      ? getLutetiumAdmissionDate(treat)
+      : getLuPsmaAdmissionDate(treat);
+    const discharge = treatmentType === 'lutetium'
+      ? getLutetiumDischargeDate(treat)
+      : getLuPsmaDischargeDate(treat);
+    return { treat: new Date(treat), admit, discharge };
+  };
+
+  const clampToToday = (date: Date): Date => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d < today ? today : d;
+  };
+
+  // Nearest valid delivery day on/after max(fromDate, today), ignoring bed/week
+  // conflicts — used to keep the treatment interval when no free slot exists.
+  const nearestValidDay = (treatmentType: 'lu-psma' | 'lutetium', fromDate: Date): Slot | null => {
+    const d = clampToToday(fromDate);
+    for (let i = 0; i < 400; i++) {
+      if (canDeliverTreatment(d, treatmentType)) {
+        const s = stayDatesFor(treatmentType, d);
+        if (areAllDatesBusinessDays(s.admit, s.treat, s.discharge)) return s;
+      }
+      d.setDate(d.getDate() + 1);
+    }
+    return null;
+  };
+
+  // Earliest fully-free slot within MAX_SHIFT_DAYS after max(fromDate, today):
+  // valid delivery day, within the weekly Lu-177 cap, all business days, and a
+  // free bed — excluding the given cycle. Returns null if the 2-week window is full.
+  const freeSlotWithin = (
     treatmentType: 'lu-psma' | 'lutetium',
     fromDate: Date,
     excludeCycleId?: string,
-  ): { treat: Date; admit: Date; discharge: Date } | null => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  ): Slot | null => {
+    const start = clampToToday(fromDate);
+    const limit = new Date(start);
+    limit.setDate(limit.getDate() + MAX_SHIFT_DAYS);
 
-    let d = new Date(fromDate);
-    d.setHours(0, 0, 0, 0);
-    if (d < today) d = new Date(today);
-
-    for (let attempts = 0; attempts < 800; attempts++) {
+    const d = new Date(start);
+    while (d <= limit) {
       if (canDeliverTreatment(d, treatmentType) && !hasLu177TreatmentInWeek(d, excludeCycleId)) {
-        const admit = treatmentType === 'lutetium'
-          ? getLutetiumAdmissionDate(d)
-          : getLuPsmaAdmissionDate(d);
-        const discharge = treatmentType === 'lutetium'
-          ? getLutetiumDischargeDate(d)
-          : getLuPsmaDischargeDate(d);
-
+        const s = stayDatesFor(treatmentType, d);
         if (
-          areAllDatesBusinessDays(admit, d, discharge) &&
-          checkAvailability(
-            formatDateToLocalString(admit),
-            formatDateToLocalString(discharge),
-            excludeCycleId,
-          )
+          areAllDatesBusinessDays(s.admit, s.treat, s.discharge) &&
+          checkAvailability(formatDateToLocalString(s.admit), formatDateToLocalString(s.discharge), excludeCycleId)
         ) {
-          return { treat: new Date(d), admit, discharge };
+          return s;
         }
       }
       d.setDate(d.getDate() + 1);
     }
+    return null;
+  };
+
+  // Places a cycle as close to its ideal date as possible. Prefers a free slot
+  // within 2 weeks (first-come-first-served — existing bookings never move).
+  // If the 2-week window is full, keeps the interval by snapping to the nearest
+  // valid day even though it overlaps, and marks it conflicted for review.
+  const placeCycle = (
+    treatmentType: 'lu-psma' | 'lutetium',
+    idealDate: Date,
+    excludeCycleId?: string,
+  ): (Slot & { conflicted: boolean }) | null => {
+    const free = freeSlotWithin(treatmentType, idealDate, excludeCycleId);
+    if (free) return { ...free, conflicted: false };
+    const valid = nearestValidDay(treatmentType, idealDate);
+    if (valid) return { ...valid, conflicted: true };
     return null;
   };
 
@@ -209,8 +249,9 @@ function PatientManager() {
     setLoading(true);
     setConflictSuggestion(null);
     try {
-      // calculateCycles places every cycle into a free, today-or-later slot,
-      // so it never overlaps an existing patient and never uses a past date.
+      // Cycles are placed near their ideal dates (shift capped at 2 weeks),
+      // never in the past. A cycle that can't find a free slot within 2 weeks
+      // keeps its interval and is left overlapping for manual review.
       const scheduledCycles = calculateCycles(
         newPatient.treatmentType,
         startDate,
@@ -230,18 +271,27 @@ function PatientManager() {
         cycles: scheduledCycles,
       });
 
-      // Tell the user if the schedule had to be shifted to avoid the past or
-      // other patients' bookings, or if not all cycles could be placed.
+      // Report adjustments: shifted start, unplaced cycles, or residual overlaps
+      // that need manual attention (couldn't fit within the 2-week window).
       const firstDate = scheduledCycles[0].scheduledDate;
       const adjusted = firstDate > startDate;
       const short = scheduledCycles.length < newPatient.cyclesPlanned;
-      let text = '患者を追加しました';
-      if (short) {
-        text = `患者を追加しました（空き状況により${scheduledCycles.length}回分のみ登録。残りは後で追加してください）`;
+      const conflictCount = scheduledCycles.filter(
+        c => !checkAvailability(c.admissionDate, c.dischargeDate),
+      ).length;
+
+      if (conflictCount > 0) {
+        setMessage({
+          type: 'error',
+          text: `患者を追加しましたが、空きがなく${conflictCount}件が他の患者と重複しています（赤色表示）。日程をご確認・調整してください。`,
+        });
+      } else if (short) {
+        setMessage({ type: 'success', text: `患者を追加しました（空き状況により${scheduledCycles.length}回分のみ登録。残りは後で追加してください）` });
       } else if (adjusted) {
-        text = `患者を追加しました（空き状況に合わせて開始日を ${new Date(firstDate).toLocaleDateString('ja-JP')} に調整しました）`;
+        setMessage({ type: 'success', text: `患者を追加しました（空き状況に合わせて開始日を ${new Date(firstDate).toLocaleDateString('ja-JP')} に調整しました）` });
+      } else {
+        setMessage({ type: 'success', text: '患者を追加しました' });
       }
-      setMessage({ type: 'success', text });
 
       setNewPatient({
         name: '',
@@ -287,40 +337,43 @@ function PatientManager() {
     for (const cycle of subsequentCycles) {
       if (cycle.status === 'cancelled') continue;
 
-      // Earliest this cycle may fall is intervalDays after the previous one;
-      // findFreeTreatmentSlot then skips forward past any other patient's
-      // booking (and never into the past), excluding this cycle itself.
-      const from = new Date(prevDate);
-      from.setDate(from.getDate() + info.intervalDays);
+      // Ideal date is intervalDays after the previous cycle. placeCycle keeps
+      // the shift within 2 weeks (excluding this cycle itself); if the window
+      // is full it keeps the interval and leaves an overlap for manual review.
+      const ideal = new Date(prevDate);
+      ideal.setDate(ideal.getDate() + info.intervalDays);
 
-      const slot = findFreeTreatmentSlot(treatmentType, from, cycle.id);
-      if (!slot) continue;
+      const placed = placeCycle(treatmentType, ideal, cycle.id);
+      if (!placed) continue;
 
       await invoke<Cycle>('update_cycle', {
         id: cycle.id,
         update: {
-          scheduledDate: formatDateToLocalString(slot.treat),
-          admissionDate: formatDateToLocalString(slot.admit),
-          dischargeDate: formatDateToLocalString(slot.discharge),
+          scheduledDate: formatDateToLocalString(placed.treat),
+          admissionDate: formatDateToLocalString(placed.admit),
+          dischargeDate: formatDateToLocalString(placed.discharge),
           status: cycle.status,
           notes: cycle.notes,
         }
       });
 
-      prevDate = slot.treat;
+      prevDate = placed.treat;
     }
 
     await loadCycles();
     await loadPatients();
   };
 
-  const updateCycle = async (id: string, update: CycleUpdatePayload, recalculate: boolean) => {
+  const updateCycle = async (id: string, update: CycleUpdatePayload, recalculate: boolean, allowOverlap = false) => {
     try {
       const original = cycles.find(c => c.id === id);
 
       // Block a manual edit that would overlap another patient's stay
       // (excluding this cycle itself). Cancelled cycles never occupy a bed.
+      // allowOverlap is set by postpone, which already placed the cycle as
+      // close as possible and may intentionally leave a flagged conflict.
       if (
+        !allowOverlap &&
         update.status !== 'cancelled' &&
         !checkAvailability(update.admissionDate, update.dischargeDate, id)
       ) {
@@ -352,25 +405,30 @@ function PatientManager() {
     if (!patient) return;
     const treatmentType = patient.treatment_type;
 
-    // Shift forward by the requested days, then land on the earliest genuinely
-    // free slot (valid delivery day, no week/bed conflict, not in the past),
-    // excluding this cycle itself.
-    const from = new Date(cycle.scheduled_date);
-    from.setDate(from.getDate() + days);
+    // The requested +N days is the ideal date. placeCycle keeps any further
+    // shift within 2 weeks; if that window is full it keeps the date near the
+    // requested one and leaves a flagged overlap (allowOverlap) rather than
+    // pushing the treatment far out.
+    const ideal = new Date(cycle.scheduled_date);
+    ideal.setDate(ideal.getDate() + days);
 
-    const slot = findFreeTreatmentSlot(treatmentType, from, cycleId);
-    if (!slot) {
-      setMessage({ type: 'error', text: '延期先の空き日程が見つかりませんでした。' });
+    const placed = placeCycle(treatmentType, ideal, cycleId);
+    if (!placed) {
+      setMessage({ type: 'error', text: '延期先の治療日が見つかりませんでした。' });
       return;
     }
 
     await updateCycle(cycleId, {
-      scheduledDate: formatDateToLocalString(slot.treat),
-      admissionDate: formatDateToLocalString(slot.admit),
-      dischargeDate: formatDateToLocalString(slot.discharge),
+      scheduledDate: formatDateToLocalString(placed.treat),
+      admissionDate: formatDateToLocalString(placed.admit),
+      dischargeDate: formatDateToLocalString(placed.discharge),
       status: cycle.status,
       notes: cycle.notes,
-    }, recalculate);
+    }, recalculate, true);
+
+    if (placed.conflicted) {
+      setMessage({ type: 'error', text: '延期しましたが、2週間以内に空きがなく他の患者と重複しています（赤色表示）。ご確認ください。' });
+    }
   };
 
   const deletePatient = async (id: string) => {
