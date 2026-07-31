@@ -39,14 +39,20 @@ impl DbState {
 }
 
 pub struct AppState {
+    /// Paths to the *effective* data directory (local by default, or the
+    /// shared network folder when configured).
     pub paths: AppPaths,
+    /// Path to config.json, always stored in the per-user local app data dir,
+    /// so the "where is the shared folder" setting travels with the machine.
+    pub config_path: PathBuf,
     pub db: Mutex<DbState>,
 }
 
 impl AppState {
-    pub fn new(data_dir: PathBuf) -> Self {
+    pub fn new(data_dir: PathBuf, config_path: PathBuf) -> Self {
         Self {
             paths: AppPaths::new(data_dir),
+            config_path,
             db: Mutex::new(DbState::Locked),
         }
     }

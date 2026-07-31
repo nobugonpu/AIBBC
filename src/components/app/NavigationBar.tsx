@@ -1,4 +1,4 @@
-import { LogOut, Upload, Home as HomeIcon, Images, Calendar, Users, KeyRound } from 'lucide-react';
+import { LogOut, Upload, Home as HomeIcon, Images, Calendar, Users, KeyRound, FolderCog } from 'lucide-react';
 
 type Page = 'home' | 'upload' | 'gallery' | 'treatment' | 'patients';
 
@@ -7,9 +7,10 @@ interface NavigationBarProps {
   onPageChange: (page: Page) => void;
   onSignOut: () => void;
   onChangePassword: () => void;
+  onDataLocation: () => void;
 }
 
-export function NavigationBar({ currentPage, onPageChange, onSignOut, onChangePassword }: NavigationBarProps) {
+export function NavigationBar({ currentPage, onPageChange, onSignOut, onChangePassword, onDataLocation }: NavigationBarProps) {
   return (
     <div className="flex items-center gap-3">
       <nav className="flex gap-2 bg-white border border-gray-300 rounded-lg p-1 shadow-sm">
@@ -69,6 +70,14 @@ export function NavigationBar({ currentPage, onPageChange, onSignOut, onChangePa
           Patients
         </button>
       </nav>
+      <button
+        onClick={onDataLocation}
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors shadow-sm"
+        title="患者データの保存先（院内共有フォルダ）を設定"
+      >
+        <FolderCog className="h-4 w-4" />
+        保存先
+      </button>
       <button
         onClick={onChangePassword}
         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors shadow-sm"

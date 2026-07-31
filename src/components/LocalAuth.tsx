@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Lock, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { Lock, KeyRound, Eye, EyeOff, FolderCog } from 'lucide-react';
+import { DataLocationModal } from './DataLocationModal';
 
 interface Props {
   onUnlocked: () => void;
@@ -8,6 +9,7 @@ interface Props {
 
 export default function LocalAuth({ onUnlocked }: Props) {
   const [isSetup, setIsSetup] = useState<boolean | null>(null);
+  const [showDataLocation, setShowDataLocation] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -167,8 +169,23 @@ export default function LocalAuth({ onUnlocked }: Props) {
               )}
             </button>
           </form>
+
+          {/* Shared data folder — lets staff point at the shared folder
+              before unlocking so everyone opens the same schedule. */}
+          <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+            <button
+              type="button"
+              onClick={() => setShowDataLocation(true)}
+              className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 transition-colors"
+            >
+              <FolderCog className="w-3.5 h-3.5" />
+              データの保存先を変更（院内共有フォルダ）
+            </button>
+          </div>
         </div>
       </div>
+
+      {showDataLocation && <DataLocationModal onClose={() => setShowDataLocation(false)} />}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import TreatmentScheduler from './components/TreatmentScheduler';
 import PatientManager from './components/PatientManager';
 import { NavigationBar } from './components/app/NavigationBar';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
+import { DataLocationModal } from './components/DataLocationModal';
 import { CheckCircle, AlertCircle, Upload } from 'lucide-react';
 
 type Page = 'home' | 'upload' | 'gallery' | 'treatment' | 'patients';
@@ -132,6 +133,7 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>('treatment');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showDataLocation, setShowDataLocation] = useState(false);
 
   if (!unlocked) {
     return <LocalAuth onUnlocked={unlock} />;
@@ -167,6 +169,7 @@ function AppContent() {
             onPageChange={setCurrentPage}
             onSignOut={lock}
             onChangePassword={() => setShowChangePassword(true)}
+            onDataLocation={() => setShowDataLocation(true)}
           />
         </div>
 
@@ -179,6 +182,8 @@ function AppContent() {
             }}
           />
         )}
+
+        {showDataLocation && <DataLocationModal onClose={() => setShowDataLocation(false)} />}
 
         {message && (
           <div
