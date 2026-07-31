@@ -64,6 +64,7 @@ export function PatientForm({ newPatient, setNewPatient, onAdd, loading, treatme
             id="startDate"
             type="date"
             value={newPatient.startDate}
+            min={new Date().toLocaleDateString('sv-SE')}
             onChange={(e) => {
               const selectedDate = new Date(e.target.value);
               if (newPatient.treatmentType === 'lutetium') {
