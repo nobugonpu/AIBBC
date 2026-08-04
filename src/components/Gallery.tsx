@@ -212,33 +212,21 @@ function MediaCard({
     onLoadBlob(item).then(url => setBlobUrl(url));
   }, [item.id]);
 
-  const handleExport = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // eslint-disable-next-line no-console
-    console.log('[Gallery] export clicked, id=', item.id);
+  const handleExport = async () => {
     setExporting(true);
     onGlobalMsg(null);
     try {
-      // eslint-disable-next-line no-console
-      console.log('[Gallery] calling invoke("export_media")', item.id);
+      // Rust decrypts the file and shows a native save dialog; returns the
+      // saved filename, or null if the user cancelled.
       const saved = await invoke<string | null>('export_media', { id: item.id });
-      // eslint-disable-next-line no-console
-      console.log('[Gallery] export_media returned:', saved);
       if (saved !== null) {
         onGlobalMsg({ type: 'success', text: `エクスポートしました: ${saved}` });
       } else {
-        // null = user cancelled the dialog
         onGlobalMsg({ type: 'success', text: 'エクスポートをキャンセルしました' });
       }
     } catch (err) {
       const text = typeof err === 'string' ? err : (err instanceof Error ? err.message : JSON.stringify(err));
-      // eslint-disable-next-line no-console
-      console.error('[Gallery] export failed:', err);
       onGlobalMsg({ type: 'error', text: `エクスポートに失敗しました: ${text}` });
-      // Belt-and-suspenders: alert() guarantees the user sees the error
-      // even if DevTools is closed and the banner is somehow obscured.
-      alert(`エクスポートに失敗しました\n${text}`);
     } finally {
       setExporting(false);
     }
@@ -280,11 +268,15 @@ function MediaCard({
           )}
           <button
             type="button"
-            onClick={() => { console.log('export clicked', item.id); alert('export clicked: ' + item.id); }}
-            className="flex items-center gap-1 text-xs px-2 py-1 rounded text-gray-700 bg-gray-100 hover:bg-green-100 hover:text-green-700 transition-colors"
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center gap-1 text-xs px-2 py-1 rounded text-gray-700 bg-gray-100 hover:bg-green-100 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title="復号してファイルに保存"
           >
-            <Download className="w-3 h-3" />
-            エクスポート
+            {exporting
+              ? <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+              : <Download className="w-3 h-3" />}
+            {exporting ? 'エクスポート中...' : 'エクスポート'}
           </button>
           <button
             onClick={() => onDelete(item.id)}
