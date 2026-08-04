@@ -156,11 +156,10 @@ function PatientManager() {
 
   type Slot = { treat: Date; admit: Date; discharge: Date };
 
-  // Auto-shifts are capped here: the schedule may slip by at most this many
-  // days to dodge holidays / other patients' bookings. Beyond this we do NOT
-  // keep pushing the date out (which would stretch the treatment interval);
-  // instead the cycle stays near its ideal date and is flagged as a conflict
-  // for a human to resolve.
+  // Auto-shifts are capped here: to keep the treatment interval, a cycle may
+  // slip by at most this many days to find a FREE slot. If no free slot exists
+  // within this window we do NOT place an overlapping booking — the operation
+  // is refused instead (overlaps are never created).
   const MAX_SHIFT_DAYS = 14;
 
   const stayDatesFor = (treatmentType: 'lu-psma' | 'lutetium', treat: Date): Slot => {
@@ -179,20 +178,6 @@ function PatientManager() {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
     return d < today ? today : d;
-  };
-
-  // Nearest valid delivery day on/after max(fromDate, today), ignoring bed/week
-  // conflicts — used to keep the treatment interval when no free slot exists.
-  const nearestValidDay = (treatmentType: 'lu-psma' | 'lutetium', fromDate: Date): Slot | null => {
-    const d = clampToToday(fromDate);
-    for (let i = 0; i < 400; i++) {
-      if (canDeliverTreatment(d, treatmentType)) {
-        const s = stayDatesFor(treatmentType, d);
-        if (areAllDatesBusinessDays(s.admit, s.treat, s.discharge)) return s;
-      }
-      d.setDate(d.getDate() + 1);
-    }
-    return null;
   };
 
   // Earliest fully-free slot within MAX_SHIFT_DAYS after max(fromDate, today):
@@ -223,20 +208,16 @@ function PatientManager() {
     return null;
   };
 
-  // Places a cycle as close to its ideal date as possible. Prefers a free slot
-  // within 2 weeks (first-come-first-served — existing bookings never move).
-  // If the 2-week window is full, keeps the interval by snapping to the nearest
-  // valid day even though it overlaps, and marks it conflicted for review.
+  // Places a cycle on the earliest FREE slot within 2 weeks of its ideal date.
+  // First-come-first-served: existing bookings never move. Returns null when no
+  // free slot exists in the window — the caller then refuses rather than
+  // creating an overlap.
   const placeCycle = (
     treatmentType: 'lu-psma' | 'lutetium',
     idealDate: Date,
     excludeCycleId?: string,
-  ): (Slot & { conflicted: boolean }) | null => {
-    const free = freeSlotWithin(treatmentType, idealDate, excludeCycleId);
-    if (free) return { ...free, conflicted: false };
-    const valid = nearestValidDay(treatmentType, idealDate);
-    if (valid) return { ...valid, conflicted: true };
-    return null;
+  ): Slot | null => {
+    return freeSlotWithin(treatmentType, idealDate, excludeCycleId);
   };
 
   const addPatient = async (overrideStartDate?: string) => {
@@ -271,22 +252,15 @@ function PatientManager() {
         cycles: scheduledCycles,
       });
 
-      // Report adjustments: shifted start, unplaced cycles, or residual overlaps
-      // that need manual attention (couldn't fit within the 2-week window).
+      // Every placed cycle is a free, non-overlapping slot. Report if the
+      // schedule was shifted or if some cycles couldn't be placed (no free slot
+      // within 2 weeks — those are NOT registered as overlaps).
       const firstDate = scheduledCycles[0].scheduledDate;
       const adjusted = firstDate > startDate;
       const short = scheduledCycles.length < newPatient.cyclesPlanned;
-      const conflictCount = scheduledCycles.filter(
-        c => !checkAvailability(c.admissionDate, c.dischargeDate),
-      ).length;
 
-      if (conflictCount > 0) {
-        setMessage({
-          type: 'error',
-          text: `患者を追加しましたが、空きがなく${conflictCount}件が他の患者と重複しています（赤色表示）。日程をご確認・調整してください。`,
-        });
-      } else if (short) {
-        setMessage({ type: 'success', text: `患者を追加しました（空き状況により${scheduledCycles.length}回分のみ登録。残りは後で追加してください）` });
+      if (short) {
+        setMessage({ type: 'error', text: `患者を追加しましたが、空きがなく${scheduledCycles.length}回分のみ登録しました（残りは空き待ち。重複は作りません）。開始日をずらすと全回登録できる場合があります。` });
       } else if (adjusted) {
         setMessage({ type: 'success', text: `患者を追加しました（空き状況に合わせて開始日を ${new Date(firstDate).toLocaleDateString('ja-JP')} に調整しました）` });
       } else {
@@ -344,7 +318,9 @@ function PatientManager() {
       ideal.setDate(ideal.getDate() + info.intervalDays);
 
       const placed = placeCycle(treatmentType, ideal, cycle.id);
-      if (!placed) continue;
+      // No free slot within 2 weeks → stop cascading rather than create an
+      // overlap. Remaining cycles keep their current dates.
+      if (!placed) break;
 
       await invoke<Cycle>('update_cycle', {
         id: cycle.id,
@@ -364,16 +340,14 @@ function PatientManager() {
     await loadPatients();
   };
 
-  const updateCycle = async (id: string, update: CycleUpdatePayload, recalculate: boolean, allowOverlap = false) => {
+  const updateCycle = async (id: string, update: CycleUpdatePayload, recalculate: boolean) => {
     try {
       const original = cycles.find(c => c.id === id);
 
-      // Block a manual edit that would overlap another patient's stay
-      // (excluding this cycle itself). Cancelled cycles never occupy a bed.
-      // allowOverlap is set by postpone, which already placed the cycle as
-      // close as possible and may intentionally leave a flagged conflict.
+      // Never allow a cycle to overlap another patient's stay (excluding this
+      // cycle itself). Cancelled cycles never occupy a bed. This guards manual
+      // edits and postpone alike — overlaps are never written.
       if (
-        !allowOverlap &&
         update.status !== 'cancelled' &&
         !checkAvailability(update.admissionDate, update.dischargeDate, id)
       ) {
@@ -405,16 +379,15 @@ function PatientManager() {
     if (!patient) return;
     const treatmentType = patient.treatment_type;
 
-    // The requested +N days is the ideal date. placeCycle keeps any further
-    // shift within 2 weeks; if that window is full it keeps the date near the
-    // requested one and leaves a flagged overlap (allowOverlap) rather than
-    // pushing the treatment far out.
+    // The requested +N days is the ideal date. placeCycle returns the earliest
+    // FREE slot within 2 weeks of it (never overlapping, never moving other
+    // patients). If none is free, the postpone is refused — no overlap created.
     const ideal = new Date(cycle.scheduled_date);
     ideal.setDate(ideal.getDate() + days);
 
     const placed = placeCycle(treatmentType, ideal, cycleId);
     if (!placed) {
-      setMessage({ type: 'error', text: '延期先の治療日が見つかりませんでした。' });
+      setMessage({ type: 'error', text: '2週間以内に空いている治療日がないため延期できませんでした（他の予約と重複するため）。別の日で調整してください。' });
       return;
     }
 
@@ -424,11 +397,7 @@ function PatientManager() {
       dischargeDate: formatDateToLocalString(placed.discharge),
       status: cycle.status,
       notes: cycle.notes,
-    }, recalculate, true);
-
-    if (placed.conflicted) {
-      setMessage({ type: 'error', text: '延期しましたが、2週間以内に空きがなく他の患者と重複しています（赤色表示）。ご確認ください。' });
-    }
+    }, recalculate);
   };
 
   const deletePatient = async (id: string) => {

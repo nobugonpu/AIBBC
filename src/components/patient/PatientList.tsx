@@ -79,6 +79,7 @@ function CycleEditRow({
             className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
           />
         </td>
+        <td className="px-3 py-2 text-xs text-gray-400">—</td>
         <td className="px-3 py-2">
           <input
             type="date"
@@ -138,7 +139,7 @@ function CycleEditRow({
       </tr>
       {hasSubsequent && dateChanged && (
         <tr className="bg-amber-50 border-t border-amber-200">
-          <td colSpan={7} className="px-4 pb-2 pt-1">
+          <td colSpan={8} className="px-4 pb-2 pt-1">
             <label className="flex items-center gap-2 text-xs text-amber-800 cursor-pointer select-none w-fit">
               <input
                 type="checkbox"
@@ -158,11 +159,15 @@ function CycleEditRow({
 function CycleViewRow({
   cycle,
   isConflicting,
+  intervalDays,
+  standardInterval,
   onEdit,
   onPostpone,
 }: {
   cycle: Cycle;
   isConflicting: boolean;
+  intervalDays: number | null;
+  standardInterval: number;
   onEdit: () => void;
   onPostpone: (days: number) => Promise<void>;
 }) {
@@ -178,6 +183,9 @@ function CycleViewRow({
     }
   };
 
+  // Deviation from the standard interval (0 = exactly on schedule).
+  const deviation = intervalDays === null ? 0 : intervalDays - standardInterval;
+
   return (
     <tr className={`border-b border-gray-100 hover:bg-gray-50 ${isConflicting ? 'bg-red-50' : ''}`}>
       <td className="px-3 py-2 text-center text-sm font-medium text-gray-600">
@@ -188,6 +196,18 @@ function CycleViewRow({
       </td>
       <td className="px-3 py-2 text-sm text-gray-700">
         {new Date(cycle.scheduled_date).toLocaleDateString('ja-JP')}
+      </td>
+      <td className="px-3 py-2 text-sm whitespace-nowrap">
+        {intervalDays === null ? (
+          <span className="text-gray-300">—</span>
+        ) : (
+          <span
+            className={deviation === 0 ? 'text-gray-600' : 'text-amber-700 font-medium'}
+            title={`標準間隔 ${standardInterval}日`}
+          >
+            {intervalDays}日{deviation !== 0 && `（${deviation > 0 ? '+' : ''}${deviation}）`}
+          </span>
+        )}
       </td>
       <td className={`px-3 py-2 text-sm ${isConflicting ? 'text-red-700 font-medium' : 'text-gray-700'}`}>
         {new Date(cycle.admission_date).toLocaleDateString('ja-JP')}
@@ -389,6 +409,7 @@ export function PatientList({
                       <tr className="bg-white/50">
                         <th className="px-3 py-2 text-xs font-semibold text-gray-500 text-center w-16">サイクル</th>
                         <th className="px-3 py-2 text-xs font-semibold text-gray-500">治療日</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-gray-500 w-24">前回間隔</th>
                         <th className="px-3 py-2 text-xs font-semibold text-gray-500">入院日</th>
                         <th className="px-3 py-2 text-xs font-semibold text-gray-500">退院日</th>
                         <th className="px-3 py-2 text-xs font-semibold text-gray-500 w-24">ステータス</th>
@@ -397,8 +418,14 @@ export function PatientList({
                       </tr>
                     </thead>
                     <tbody>
-                      {patientCycles.map(cycle =>
-                        editingCycleId === cycle.id ? (
+                      {patientCycles.map((cycle, idx) => {
+                        const prev = idx > 0 ? patientCycles[idx - 1] : null;
+                        const intervalDays = prev
+                          ? Math.round(
+                              (new Date(cycle.scheduled_date).getTime() - new Date(prev.scheduled_date).getTime()) / 86400000,
+                            )
+                          : null;
+                        return editingCycleId === cycle.id ? (
                           <CycleEditRow
                             key={cycle.id}
                             cycle={cycle}
@@ -411,11 +438,13 @@ export function PatientList({
                             key={cycle.id}
                             cycle={cycle}
                             isConflicting={conflictingCycleIds.has(cycle.id)}
+                            intervalDays={intervalDays}
+                            standardInterval={info.intervalDays}
                             onEdit={() => setEditingCycleId(cycle.id)}
                             onPostpone={(days) => onCyclePostpone(cycle.id, days, true)}
                           />
-                        )
-                      )}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
