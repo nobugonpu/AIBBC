@@ -9,13 +9,15 @@
 export function printHtml(html: string): void {
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
+  // The iframe needs a REAL size so its document lays out fully — a 0x0 iframe
+  // collapses the flow content and only the first item/page prints. Give it an
+  // A4-ish viewport and hide it off-screen instead of sizing it to zero.
   iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
+  iframe.style.left = '-10000px';
+  iframe.style.top = '0';
+  iframe.style.width = '794px';   // ~A4 width at 96dpi
+  iframe.style.height = '1123px'; // ~A4 height at 96dpi
   iframe.style.border = '0';
-  iframe.style.visibility = 'hidden';
   document.body.appendChild(iframe);
 
   const cleanup = () => {
