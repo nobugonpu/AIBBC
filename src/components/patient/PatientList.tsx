@@ -227,22 +227,22 @@ function CycleViewRow({
         <div className="flex items-center gap-1 justify-end">
           {canPostpone && (
             <>
-              <button
-                onClick={() => handlePostpone(7)}
-                disabled={postponing}
-                title="この回以降を1週間延期"
-                className="px-1.5 py-0.5 text-xs rounded text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-40 transition-colors"
-              >
-                +7日
-              </button>
-              <button
-                onClick={() => handlePostpone(14)}
-                disabled={postponing}
-                title="この回以降を2週間延期"
-                className="px-1.5 py-0.5 text-xs rounded text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-40 transition-colors"
-              >
-                +14日
-              </button>
+              {[
+                { d: 7, label: '+7日' },
+                { d: 14, label: '+14日' },
+                { d: 28, label: '+4週' },
+                { d: 56, label: '+8週' },
+              ].map(o => (
+                <button
+                  key={o.d}
+                  onClick={() => handlePostpone(o.d)}
+                  disabled={postponing}
+                  title={`この回以降を${o.d}日延期（副作用時は最長16週まで）`}
+                  className="px-1.5 py-0.5 text-xs rounded text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-40 transition-colors"
+                >
+                  {o.label}
+                </button>
+              ))}
             </>
           )}
           <button

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Calendar, User, AlertCircle, CheckCircle, Printer, ArrowRight } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
-import { canDeliverTreatment, getLutetiumAdmissionDate, getLutetiumDischargeDate, getLuPsmaAdmissionDate, getLuPsmaDischargeDate, formatDateToLocalString, areAllDatesBusinessDays } from '../utils/dateHelpers';
+import { canDeliverTreatment, getLutetiumAdmissionDate, getLutetiumDischargeDate, getLuPsmaAdmissionDate, getLuPsmaDischargeDate, formatDateToLocalString, areAllDatesBusinessDays, isOrderable } from '../utils/dateHelpers';
 import { PatientForm } from './patient/PatientForm';
 import { OccupancyStats } from './patient/OccupancyStats';
 import { PatientList } from './patient/PatientList';
@@ -162,6 +162,21 @@ function PatientManager() {
   // is refused instead (overlaps are never created).
   const MAX_SHIFT_DAYS = 14;
 
+  // Longest allowed treatment interval (副作用による延期は最長16週まで許容).
+  const MAX_INTERVAL_DAYS = 16 * 7; // 112
+
+  // Earliest treatment date whose Lu-177 order can still be placed (order
+  // deadline = 17:00 on the Monday two weeks before the treatment week).
+  const earliestOrderableDate = (): Date => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    for (let i = 0; i < 60; i++) {
+      if (isOrderable(d)) return new Date(d);
+      d.setDate(d.getDate() + 1);
+    }
+    return d;
+  };
+
   const stayDatesFor = (treatmentType: 'lu-psma' | 'lutetium', treat: Date): Slot => {
     const admit = treatmentType === 'lutetium'
       ? getLutetiumAdmissionDate(treat)
@@ -172,29 +187,32 @@ function PatientManager() {
     return { treat: new Date(treat), admit, discharge };
   };
 
-  const clampToToday = (date: Date): Date => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  // Clamp to the earliest date that is both today-or-later AND still orderable
+  // (Lu-177 order deadline not yet passed). This pushes new bookings out far
+  // enough that the drug can actually be ordered in time.
+  const clampToEarliest = (date: Date): Date => {
+    const earliest = earliestOrderableDate();
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
-    return d < today ? today : d;
+    return d < earliest ? earliest : d;
   };
 
-  // Earliest fully-free slot within MAX_SHIFT_DAYS after max(fromDate, today):
-  // valid delivery day, within the weekly Lu-177 cap, all business days, and a
-  // free bed — excluding the given cycle. Returns null if the 2-week window is full.
+  // Earliest fully-free slot within MAX_SHIFT_DAYS after the clamped start:
+  // valid delivery day, orderable (not past the Lu-177 order deadline), within
+  // the weekly Lu-177 cap, all business days, and a free bed — excluding the
+  // given cycle. Returns null if the 2-week window is full.
   const freeSlotWithin = (
     treatmentType: 'lu-psma' | 'lutetium',
     fromDate: Date,
     excludeCycleId?: string,
   ): Slot | null => {
-    const start = clampToToday(fromDate);
+    const start = clampToEarliest(fromDate);
     const limit = new Date(start);
     limit.setDate(limit.getDate() + MAX_SHIFT_DAYS);
 
     const d = new Date(start);
     while (d <= limit) {
-      if (canDeliverTreatment(d, treatmentType) && !hasLu177TreatmentInWeek(d, excludeCycleId)) {
+      if (canDeliverTreatment(d, treatmentType) && isOrderable(d) && !hasLu177TreatmentInWeek(d, excludeCycleId)) {
         const s = stayDatesFor(treatmentType, d);
         if (
           areAllDatesBusinessDays(s.admit, s.treat, s.discharge) &&
@@ -343,16 +361,36 @@ function PatientManager() {
   const updateCycle = async (id: string, update: CycleUpdatePayload, recalculate: boolean) => {
     try {
       const original = cycles.find(c => c.id === id);
+      const dateChanged = !!original && update.scheduledDate !== original.scheduled_date;
 
-      // Never allow a cycle to overlap another patient's stay (excluding this
-      // cycle itself). Cancelled cycles never occupy a bed. This guards manual
-      // edits and postpone alike — overlaps are never written.
-      if (
-        update.status !== 'cancelled' &&
-        !checkAvailability(update.admissionDate, update.dischargeDate, id)
-      ) {
-        setMessage({ type: 'error', text: 'その日程は他の患者と重複します。別の日を選んでください。' });
-        throw new Error('overlap');
+      if (update.status !== 'cancelled') {
+        // Never overlap another patient's stay (existing bookings never move).
+        if (!checkAvailability(update.admissionDate, update.dischargeDate, id)) {
+          setMessage({ type: 'error', text: 'その日程は他の患者と重複します。別の日を選んでください。' });
+          throw new Error('overlap');
+        }
+        // A changed treatment date must still be orderable (Lu-177 order
+        // deadline = 17:00 on the Monday two weeks before the treatment week).
+        if (dateChanged && !isOrderable(new Date(update.scheduledDate))) {
+          setMessage({ type: 'error', text: '発注締切（治療日の2週間前の月曜17時）を過ぎているため、この治療日は選べません。' });
+          throw new Error('order-deadline');
+        }
+        // Interval from the previous cycle may extend up to 16 weeks (side
+        // effects) but no further.
+        if (dateChanged && original) {
+          const prev = cycles.find(
+            c => c.patient_id === original.patient_id && c.cycle_number === original.cycle_number - 1,
+          );
+          if (prev) {
+            const gap = Math.round(
+              (new Date(update.scheduledDate).getTime() - new Date(prev.scheduled_date).getTime()) / 86400000,
+            );
+            if (gap > MAX_INTERVAL_DAYS) {
+              setMessage({ type: 'error', text: `前回からの治療間隔は最長16週（112日）までです（今回 ${gap}日）。` });
+              throw new Error('interval-too-long');
+            }
+          }
+        }
       }
 
       const updatedCycle = await invoke<Cycle>('update_cycle', { id, update });

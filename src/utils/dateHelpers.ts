@@ -179,6 +179,24 @@ export const getMondayOfWeek = (date: Date): Date => {
 };
 
 /**
+ * Lu-177薬剤の発注締切：治療日の週の「2週間前の月曜日 17:00」。
+ * （例：治療が第N週なら、第N-2週の月曜17時が発注締切）
+ */
+export const getOrderDeadline = (treatmentDate: Date): Date => {
+  const monday = getMondayOfWeek(treatmentDate);
+  monday.setDate(monday.getDate() - 14);
+  monday.setHours(17, 0, 0, 0);
+  return monday;
+};
+
+/**
+ * 指定した治療日が、現時点（now）で発注可能か（締切を過ぎていないか）。
+ */
+export const isOrderable = (treatmentDate: Date, now: Date = new Date()): boolean => {
+  return now.getTime() <= getOrderDeadline(treatmentDate).getTime();
+};
+
+/**
  * 月曜・火曜・水曜のいずれかが祝日に該当する週は治療対象外とする。
  * （その週の月曜日を基準に、月〜水の3日間に祝日があるか判定）
  */
