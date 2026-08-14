@@ -436,6 +436,13 @@ function PatientManager() {
       const dateChanged = !!original && update.scheduledDate !== original.scheduled_date;
 
       if (update.status !== 'cancelled') {
+        const patientType = patients.find(p => p.id === original?.patient_id)?.treatment_type;
+        // A changed treatment date must be a valid delivery day (weekday/曜日・
+        // 祝日・非入荷・対象外週のルールを満たすこと).
+        if (dateChanged && patientType && !canDeliverTreatment(new Date(update.scheduledDate), patientType)) {
+          setMessage({ type: 'error', text: 'その日は治療日にできません（曜日・祝日・非入荷日・治療対象外週のため）。別の日を選んでください。' });
+          throw new Error('invalid-day');
+        }
         // Never overlap another patient's stay (existing bookings never move).
         if (!checkAvailability(update.admissionDate, update.dischargeDate, id)) {
           setMessage({ type: 'error', text: 'その日程は他の患者と重複します。別の日を選んでください。' });

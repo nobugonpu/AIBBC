@@ -1,6 +1,20 @@
 import { useState, useMemo } from 'react';
 import { Clock, Printer, Trash2, ChevronDown, ChevronUp, Pencil, Check, X, AlertTriangle, FileText } from 'lucide-react';
-import type { Patient, Cycle, TreatmentInfoMap, CycleStatus } from '../../shared/contracts/patient';
+import type { Patient, Cycle, TreatmentInfoMap, CycleStatus, TreatmentType } from '../../shared/contracts/patient';
+import {
+  getLuPsmaAdmissionDate, getLuPsmaDischargeDate,
+  getLutetiumAdmissionDate, getLutetiumDischargeDate,
+  formatDateToLocalString,
+} from '../../utils/dateHelpers';
+
+// Admission/discharge derived from the treatment date (same rule as scheduling).
+function stayFromTreatment(treatmentType: TreatmentType, treatDate: string): { admissionDate: string; dischargeDate: string } {
+  if (!treatDate) return { admissionDate: '', dischargeDate: '' };
+  const t = new Date(treatDate);
+  const admit = treatmentType === 'lutetium' ? getLutetiumAdmissionDate(t) : getLuPsmaAdmissionDate(t);
+  const dis = treatmentType === 'lutetium' ? getLutetiumDischargeDate(t) : getLuPsmaDischargeDate(t);
+  return { admissionDate: formatDateToLocalString(admit), dischargeDate: formatDateToLocalString(dis) };
+}
 
 export interface CycleUpdatePayload {
   scheduledDate: string;
@@ -35,31 +49,35 @@ const STATUS_COLORS: Record<CycleStatus, string> = {
 
 function CycleEditRow({
   cycle,
+  treatmentType,
   hasSubsequent,
   onSave,
   onCancel,
 }: {
   cycle: Cycle;
+  treatmentType: TreatmentType;
   hasSubsequent: boolean;
   onSave: (update: CycleUpdatePayload, recalculate: boolean) => Promise<void>;
   onCancel: () => void;
 }) {
-  const [values, setValues] = useState<CycleUpdatePayload>({
-    scheduledDate: cycle.scheduled_date,
-    admissionDate: cycle.admission_date,
-    dischargeDate: cycle.discharge_date,
-    status: cycle.status,
-    notes: cycle.notes ?? '',
-  });
+  const [scheduledDate, setScheduledDate] = useState(cycle.scheduled_date);
+  const [status, setStatus] = useState<CycleStatus>(cycle.status);
+  const [notes, setNotes] = useState(cycle.notes ?? '');
   const [recalculate, setRecalculate] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const dateChanged = values.scheduledDate !== cycle.scheduled_date;
+  const dateChanged = scheduledDate !== cycle.scheduled_date;
+  // Admission/discharge always follow the treatment date automatically.
+  const stay = stayFromTreatment(treatmentType, scheduledDate);
+  const fmtJp = (s: string) => (s ? new Date(s).toLocaleDateString('ja-JP') : '—');
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave(values, recalculate && dateChanged);
+      await onSave(
+        { scheduledDate, admissionDate: stay.admissionDate, dischargeDate: stay.dischargeDate, status, notes },
+        recalculate && dateChanged,
+      );
     } finally {
       setSaving(false);
     }
@@ -74,32 +92,18 @@ function CycleEditRow({
         <td className="px-3 py-2">
           <input
             type="date"
-            value={values.scheduledDate}
-            onChange={e => setValues(v => ({ ...v, scheduledDate: e.target.value }))}
+            value={scheduledDate}
+            onChange={e => setScheduledDate(e.target.value)}
             className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
           />
         </td>
         <td className="px-3 py-2 text-xs text-gray-400">—</td>
-        <td className="px-3 py-2">
-          <input
-            type="date"
-            value={values.admissionDate}
-            onChange={e => setValues(v => ({ ...v, admissionDate: e.target.value }))}
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-          />
-        </td>
-        <td className="px-3 py-2">
-          <input
-            type="date"
-            value={values.dischargeDate}
-            onChange={e => setValues(v => ({ ...v, dischargeDate: e.target.value }))}
-            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-          />
-        </td>
+        <td className="px-3 py-2 text-xs text-gray-600" title="治療日から自動計算">{fmtJp(stay.admissionDate)}</td>
+        <td className="px-3 py-2 text-xs text-gray-600" title="治療日から自動計算">{fmtJp(stay.dischargeDate)}</td>
         <td className="px-3 py-2">
           <select
-            value={values.status}
-            onChange={e => setValues(v => ({ ...v, status: e.target.value as CycleStatus }))}
+            value={status}
+            onChange={e => setStatus(e.target.value as CycleStatus)}
             className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
           >
             <option value="scheduled">予定</option>
@@ -110,8 +114,8 @@ function CycleEditRow({
         <td className="px-3 py-2">
           <input
             type="text"
-            value={values.notes}
-            onChange={e => setValues(v => ({ ...v, notes: e.target.value }))}
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
             placeholder="メモを入力"
             className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
           />
@@ -429,6 +433,7 @@ export function PatientList({
                           <CycleEditRow
                             key={cycle.id}
                             cycle={cycle}
+                            treatmentType={patient.treatment_type}
                             hasSubsequent={patientCycles.some(c => c.cycle_number > cycle.cycle_number && c.status !== 'cancelled')}
                             onSave={(update, recalculate) => handleSaveCycle(cycle.id, update, recalculate)}
                             onCancel={() => setEditingCycleId(null)}
