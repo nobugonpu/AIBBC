@@ -232,16 +232,16 @@ function CycleViewRow({
           {canPostpone && (
             <>
               {[
+                { d: -7, label: '−7日' },
                 { d: 7, label: '+7日' },
                 { d: 14, label: '+14日' },
-                { d: 28, label: '+4週' },
-                { d: 56, label: '+8週' },
+                { d: 21, label: '+21日' },
               ].map(o => (
                 <button
                   key={o.d}
                   onClick={() => handlePostpone(o.d)}
                   disabled={postponing}
-                  title={`この回以降を${o.d}日延期（副作用時は最長16週まで）`}
+                  title={o.d < 0 ? `この回以降を${-o.d}日前倒し` : `この回以降を${o.d}日延期（最長16週まで）`}
                   className="px-1.5 py-0.5 text-xs rounded text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-40 transition-colors"
                 >
                   {o.label}

@@ -501,15 +501,35 @@ function PatientManager() {
     if (!patient) return;
     const treatmentType = patient.treatment_type;
 
-    // The requested +N days is the ideal date. placeCycle returns the earliest
+    // The requested ±N days is the ideal date. placeCycle returns the earliest
     // FREE slot within 2 weeks of it (never overlapping, never moving other
-    // patients). If none is free, the postpone is refused — no overlap created.
+    // patients). If none is free, the operation is refused — no overlap created.
     const ideal = new Date(cycle.scheduled_date);
     ideal.setDate(ideal.getDate() + days);
+    const forward = days >= 0;
+
+    const showBlocked = (lead: string) => {
+      const reasons = explainWhyNotIdeal(ideal, treatmentType, cycleId);
+      const reasonText = reasons.length ? reasons.join('\n・') : '空き状況・治療日ルールによる';
+      const text = `${lead}\n\n理由：\n・${reasonText}`;
+      setInfoPopup({ title: forward ? '延期できませんでした' : '前倒しできませんでした', text });
+      setMessage({ type: 'error', text: lead });
+    };
 
     const placed = placeCycle(treatmentType, ideal, cycleId);
     if (!placed) {
-      setMessage({ type: 'error', text: '2週間以内に空いている治療日がないため延期できませんでした（他の予約と重複するため）。別の日で調整してください。' });
+      showBlocked(`${forward ? '延期' : '前倒し'}先に空いている治療日がありません（2週間以内）。`);
+      return;
+    }
+
+    // A "-N日" (前倒し) that couldn't actually move earlier — e.g. blocked by the
+    // order deadline — must not silently jump later. Refuse and explain.
+    if (!forward && formatDateToLocalString(placed.treat) >= formatDateToLocalString(cycle.scheduled_date)) {
+      showBlocked('これ以上早い治療日に変更できません（発注締切・空き状況・治療日ルールのため）。');
+      return;
+    }
+    if (formatDateToLocalString(placed.treat) === formatDateToLocalString(cycle.scheduled_date)) {
+      showBlocked('治療日は変更されませんでした（近くに空いている治療日がありません）。');
       return;
     }
 
