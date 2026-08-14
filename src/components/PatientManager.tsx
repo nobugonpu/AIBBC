@@ -26,6 +26,12 @@ function PatientManager() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [conflictSuggestion, setConflictSuggestion] = useState<{ date: string; cycles: number[] } | null>(null);
   const [loading, setLoading] = useState(false);
+  // Snapshot of a patient's cycles taken just before a postpone, so it can be undone.
+  const [undoSnapshot, setUndoSnapshot] = useState<
+    { id: string; scheduledDate: string; admissionDate: string; dischargeDate: string; status: string; notes: string }[] | null
+  >(null);
+  // Explanation shown when the chosen treatment date differs from the ideal one.
+  const [infoPopup, setInfoPopup] = useState<string | null>(null);
   const [occupancyView, setOccupancyView] = useState<'calendar' | 'timeline'>('calendar');
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -238,6 +244,60 @@ function PatientManager() {
     return freeSlotWithin(treatmentType, idealDate, excludeCycleId);
   };
 
+  // Explains why the ideal (requested) treatment date could not be used — used
+  // to tell the user why the actual date differs.
+  const explainWhyNotIdeal = (
+    idealDate: Date,
+    treatmentType: 'lu-psma' | 'lutetium',
+    excludeCycleId?: string,
+  ): string[] => {
+    const reasons: string[] = [];
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const d = new Date(idealDate); d.setHours(0, 0, 0, 0);
+    if (d < today) reasons.push('本来の日が過去のため');
+    if (!isOrderable(idealDate)) reasons.push('発注締切（治療日の2週間前の月曜17時）を過ぎているため');
+    if (!canDeliverTreatment(idealDate, treatmentType)) {
+      reasons.push('本来の日が休診日・祝日・非入荷日・治療対象外週にあたるため');
+    } else {
+      if (hasLu177TreatmentInWeek(idealDate, excludeCycleId)) {
+        reasons.push('同じ週に既に別のLu-177治療があるため（週1件まで）');
+      }
+      const s = stayDatesFor(treatmentType, idealDate);
+      if (!checkAvailability(formatDateToLocalString(s.admit), formatDateToLocalString(s.discharge), excludeCycleId)) {
+        reasons.push('他の患者と入院期間が重複するため');
+      }
+    }
+    return reasons;
+  };
+
+  // Restores the cycles saved before the last postpone (undo).
+  const undoPostpone = async () => {
+    if (!undoSnapshot) return;
+    setLoading(true);
+    try {
+      for (const s of undoSnapshot) {
+        await invoke('update_cycle', {
+          id: s.id,
+          update: {
+            scheduledDate: s.scheduledDate,
+            admissionDate: s.admissionDate,
+            dischargeDate: s.dischargeDate,
+            status: s.status,
+            notes: s.notes,
+          },
+        });
+      }
+      setUndoSnapshot(null);
+      setMessage({ type: 'success', text: '延期を元に戻しました' });
+      await loadCycles();
+      await loadPatients();
+    } catch {
+      setMessage({ type: 'error', text: '元に戻せませんでした' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const addPatient = async (overrideStartDate?: string) => {
     if (!newPatient.name.trim()) {
       setMessage({ type: 'error', text: '患者名を入力してください' });
@@ -247,6 +307,7 @@ function PatientManager() {
     const startDate = overrideStartDate ?? newPatient.startDate;
     setLoading(true);
     setConflictSuggestion(null);
+    setUndoSnapshot(null);
     try {
       // Cycles are placed near their ideal dates (shift capped at 2 weeks),
       // never in the past. A cycle that can't find a free slot within 2 weeks
@@ -280,9 +341,19 @@ function PatientManager() {
       if (short) {
         setMessage({ type: 'error', text: `患者を追加しましたが、空きがなく${scheduledCycles.length}回分のみ登録しました（残りは空き待ち。重複は作りません）。開始日をずらすと全回登録できる場合があります。` });
       } else if (adjusted) {
-        setMessage({ type: 'success', text: `患者を追加しました（空き状況に合わせて開始日を ${new Date(firstDate).toLocaleDateString('ja-JP')} に調整しました）` });
+        setMessage({ type: 'success', text: `患者を追加しました（開始日を ${new Date(firstDate).toLocaleDateString('ja-JP')} に調整しました）` });
       } else {
         setMessage({ type: 'success', text: '患者を追加しました' });
+      }
+
+      // Explain to the user why the first treatment date differs from the one they entered.
+      if (adjusted) {
+        const reasons = explainWhyNotIdeal(new Date(startDate), newPatient.treatmentType);
+        const reasonText = reasons.length ? reasons.join('\n・') : '空き状況・治療日ルールにより調整されました';
+        setInfoPopup(
+          `ご希望の開始日 ${new Date(startDate).toLocaleDateString('ja-JP')} には予約できなかったため、\n` +
+          `${new Date(firstDate).toLocaleDateString('ja-JP')} に調整しました。\n\n理由：\n・${reasonText}`,
+        );
       }
 
       setNewPatient({
@@ -360,6 +431,7 @@ function PatientManager() {
 
   const updateCycle = async (id: string, update: CycleUpdatePayload, recalculate: boolean) => {
     try {
+      setUndoSnapshot(null); // a manual edit invalidates any pending postpone-undo
       const original = cycles.find(c => c.id === id);
       const dateChanged = !!original && update.scheduledDate !== original.scheduled_date;
 
@@ -429,6 +501,19 @@ function PatientManager() {
       return;
     }
 
+    // Snapshot this patient's cycles BEFORE the change so the postpone (and its
+    // subsequent-cycle recalculation) can be undone in one step.
+    const snapshot = cycles
+      .filter(c => c.patient_id === cycle.patient_id)
+      .map(c => ({
+        id: c.id,
+        scheduledDate: c.scheduled_date,
+        admissionDate: c.admission_date,
+        dischargeDate: c.discharge_date,
+        status: c.status,
+        notes: c.notes ?? '',
+      }));
+
     await updateCycle(cycleId, {
       scheduledDate: formatDateToLocalString(placed.treat),
       admissionDate: formatDateToLocalString(placed.admit),
@@ -436,6 +521,18 @@ function PatientManager() {
       status: cycle.status,
       notes: cycle.notes,
     }, recalculate);
+
+    setUndoSnapshot(snapshot);
+
+    // If the landed date differs from the requested +N date, explain why.
+    if (formatDateToLocalString(placed.treat) !== formatDateToLocalString(ideal)) {
+      const reasons = explainWhyNotIdeal(ideal, treatmentType, cycleId);
+      const reasonText = reasons.length ? reasons.join('\n・') : '空き状況・治療日ルールにより調整されました';
+      setInfoPopup(
+        `ご希望の ${ideal.toLocaleDateString('ja-JP')} には予約できなかったため、\n` +
+        `${placed.treat.toLocaleDateString('ja-JP')} に調整しました。\n\n理由：\n・${reasonText}`,
+      );
+    }
   };
 
   const deletePatient = async (id: string) => {
@@ -602,7 +699,16 @@ function PatientManager() {
             ) : (
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
             )}
-            <p className="text-sm font-medium">{message.text}</p>
+            <p className="text-sm font-medium flex-1">{message.text}</p>
+            {undoSnapshot && (
+              <button
+                onClick={undoPostpone}
+                disabled={loading}
+                className="flex-shrink-0 px-3 py-1.5 text-xs font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                元に戻す
+              </button>
+            )}
           </div>
         )}
 
@@ -725,6 +831,29 @@ function PatientManager() {
               treatmentInfo={TREATMENT_INFO}
             />
           )}
+        </div>
+      )}
+
+      {infoPopup && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={() => setInfoPopup(null)}
+        >
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+              <h3 className="text-lg font-bold text-gray-900">治療日を調整しました</h3>
+            </div>
+            <p className="text-sm text-gray-700 whitespace-pre-line">{infoPopup}</p>
+            <div className="mt-5 text-right">
+              <button
+                onClick={() => setInfoPopup(null)}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                OK
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
