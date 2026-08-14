@@ -30,8 +30,9 @@ function PatientManager() {
   const [undoSnapshot, setUndoSnapshot] = useState<
     { id: string; scheduledDate: string; admissionDate: string; dischargeDate: string; status: string; notes: string }[] | null
   >(null);
-  // Explanation shown when the chosen treatment date differs from the ideal one.
-  const [infoPopup, setInfoPopup] = useState<string | null>(null);
+  // Centered popup: adjustments (why a date changed) and edit rejections (why a
+  // manual change can't be applied — holiday/weekend/excluded/overlap/deadline).
+  const [infoPopup, setInfoPopup] = useState<{ title: string; text: string } | null>(null);
   const [occupancyView, setOccupancyView] = useState<'calendar' | 'timeline'>('calendar');
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -350,10 +351,12 @@ function PatientManager() {
       if (adjusted) {
         const reasons = explainWhyNotIdeal(new Date(startDate), newPatient.treatmentType);
         const reasonText = reasons.length ? reasons.join('\n・') : '空き状況・治療日ルールにより調整されました';
-        setInfoPopup(
-          `ご希望の開始日 ${new Date(startDate).toLocaleDateString('ja-JP')} には予約できなかったため、\n` +
-          `${new Date(firstDate).toLocaleDateString('ja-JP')} に調整しました。\n\n理由：\n・${reasonText}`,
-        );
+        setInfoPopup({
+          title: '治療日を調整しました',
+          text:
+            `ご希望の開始日 ${new Date(startDate).toLocaleDateString('ja-JP')} には予約できなかったため、\n` +
+            `${new Date(firstDate).toLocaleDateString('ja-JP')} に調整しました。\n\n理由：\n・${reasonText}`,
+        });
       }
 
       setNewPatient({
@@ -435,27 +438,30 @@ function PatientManager() {
       const original = cycles.find(c => c.id === id);
       const dateChanged = !!original && update.scheduledDate !== original.scheduled_date;
 
+      // Shows a centered popup AND a banner message, then aborts the save.
+      const reject = (text: string, tag: string): never => {
+        setInfoPopup({ title: 'この日には変更できません', text });
+        setMessage({ type: 'error', text });
+        throw new Error(tag);
+      };
+
       if (update.status !== 'cancelled') {
         const patientType = patients.find(p => p.id === original?.patient_id)?.treatment_type;
-        // A changed treatment date must be a valid delivery day (weekday/曜日・
-        // 祝日・非入荷・対象外週のルールを満たすこと).
+        // A changed treatment date must be a valid delivery day (曜日・祝日・
+        // 非入荷日・治療対象外週のルールを満たすこと).
         if (dateChanged && patientType && !canDeliverTreatment(new Date(update.scheduledDate), patientType)) {
-          setMessage({ type: 'error', text: 'その日は治療日にできません（曜日・祝日・非入荷日・治療対象外週のため）。別の日を選んでください。' });
-          throw new Error('invalid-day');
+          reject('その日は治療日にできません（曜日・祝日・非入荷日・治療対象外週のため）。別の日を選んでください。', 'invalid-day');
         }
         // Never overlap another patient's stay (existing bookings never move).
         if (!checkAvailability(update.admissionDate, update.dischargeDate, id)) {
-          setMessage({ type: 'error', text: 'その日程は他の患者と重複します。別の日を選んでください。' });
-          throw new Error('overlap');
+          reject('その日程は他の患者と入院期間が重複します。別の日を選んでください。', 'overlap');
         }
-        // A changed treatment date must still be orderable (Lu-177 order
-        // deadline = 17:00 on the Monday two weeks before the treatment week).
+        // A changed treatment date must still be orderable (order deadline =
+        // 17:00 on the Monday two weeks before the treatment week).
         if (dateChanged && !isOrderable(new Date(update.scheduledDate))) {
-          setMessage({ type: 'error', text: '発注締切（治療日の2週間前の月曜17時）を過ぎているため、この治療日は選べません。' });
-          throw new Error('order-deadline');
+          reject('発注締切（治療日の2週間前の月曜17時）を過ぎているため、この治療日は選べません。', 'order-deadline');
         }
-        // Interval from the previous cycle may extend up to 16 weeks (side
-        // effects) but no further.
+        // Interval from the previous cycle may extend up to 16 weeks only.
         if (dateChanged && original) {
           const prev = cycles.find(
             c => c.patient_id === original.patient_id && c.cycle_number === original.cycle_number - 1,
@@ -465,8 +471,7 @@ function PatientManager() {
               (new Date(update.scheduledDate).getTime() - new Date(prev.scheduled_date).getTime()) / 86400000,
             );
             if (gap > MAX_INTERVAL_DAYS) {
-              setMessage({ type: 'error', text: `前回からの治療間隔は最長16週（112日）までです（今回 ${gap}日）。` });
-              throw new Error('interval-too-long');
+              reject(`前回からの治療間隔は最長16週（112日）までです（今回 ${gap}日）。`, 'interval-too-long');
             }
           }
         }
@@ -535,10 +540,12 @@ function PatientManager() {
     if (formatDateToLocalString(placed.treat) !== formatDateToLocalString(ideal)) {
       const reasons = explainWhyNotIdeal(ideal, treatmentType, cycleId);
       const reasonText = reasons.length ? reasons.join('\n・') : '空き状況・治療日ルールにより調整されました';
-      setInfoPopup(
-        `ご希望の ${ideal.toLocaleDateString('ja-JP')} には予約できなかったため、\n` +
-        `${placed.treat.toLocaleDateString('ja-JP')} に調整しました。\n\n理由：\n・${reasonText}`,
-      );
+      setInfoPopup({
+        title: '治療日を調整しました',
+        text:
+          `ご希望の ${ideal.toLocaleDateString('ja-JP')} には予約できなかったため、\n` +
+          `${placed.treat.toLocaleDateString('ja-JP')} に調整しました。\n\n理由：\n・${reasonText}`,
+      });
     }
   };
 
@@ -849,9 +856,9 @@ function PatientManager() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-3">
               <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
-              <h3 className="text-lg font-bold text-gray-900">治療日を調整しました</h3>
+              <h3 className="text-lg font-bold text-gray-900">{infoPopup.title}</h3>
             </div>
-            <p className="text-sm text-gray-700 whitespace-pre-line">{infoPopup}</p>
+            <p className="text-sm text-gray-700 whitespace-pre-line">{infoPopup.text}</p>
             <div className="mt-5 text-right">
               <button
                 onClick={() => setInfoPopup(null)}
