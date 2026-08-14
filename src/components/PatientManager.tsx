@@ -439,10 +439,10 @@ function PatientManager() {
       const dateChanged = !!original && update.scheduledDate !== original.scheduled_date;
 
       // Shows a centered popup AND a banner message, then aborts the save.
-      const reject = (text: string, tag: string): never => {
+      const reject = (text: string): never => {
         setInfoPopup({ title: 'この日には変更できません', text });
         setMessage({ type: 'error', text });
-        throw new Error(tag);
+        throw new Error(text);
       };
 
       if (update.status !== 'cancelled') {
@@ -450,16 +450,16 @@ function PatientManager() {
         // A changed treatment date must be a valid delivery day (曜日・祝日・
         // 非入荷日・治療対象外週のルールを満たすこと).
         if (dateChanged && patientType && !canDeliverTreatment(new Date(update.scheduledDate), patientType)) {
-          reject('その日は治療日にできません（曜日・祝日・非入荷日・治療対象外週のため）。別の日を選んでください。', 'invalid-day');
+          reject('その日は治療日にできません（曜日・祝日・非入荷日・治療対象外週のため）。別の日を選んでください。');
         }
         // Never overlap another patient's stay (existing bookings never move).
         if (!checkAvailability(update.admissionDate, update.dischargeDate, id)) {
-          reject('その日程は他の患者と入院期間が重複します。別の日を選んでください。', 'overlap');
+          reject('その日程は他の患者と入院期間が重複します。別の日を選んでください。');
         }
         // A changed treatment date must still be orderable (order deadline =
         // 17:00 on the Monday two weeks before the treatment week).
         if (dateChanged && !isOrderable(new Date(update.scheduledDate))) {
-          reject('発注締切（治療日の2週間前の月曜17時）を過ぎているため、この治療日は選べません。', 'order-deadline');
+          reject('発注締切（治療日の2週間前の月曜17時）を過ぎているため、この治療日は選べません。');
         }
         // Interval from the previous cycle may extend up to 16 weeks only.
         if (dateChanged && original) {
@@ -471,7 +471,7 @@ function PatientManager() {
               (new Date(update.scheduledDate).getTime() - new Date(prev.scheduled_date).getTime()) / 86400000,
             );
             if (gap > MAX_INTERVAL_DAYS) {
-              reject(`前回からの治療間隔は最長16週（112日）までです（今回 ${gap}日）。`, 'interval-too-long');
+              reject(`前回からの治療間隔は最長16週（112日）までです（今回 ${gap}日）。`);
             }
           }
         }
@@ -495,10 +495,11 @@ function PatientManager() {
   };
 
   const postponeCycle = async (cycleId: string, days: number, recalculate: boolean) => {
+   try {
     const cycle = cycles.find(c => c.id === cycleId);
-    if (!cycle) return;
+    if (!cycle) { setInfoPopup({ title: 'エラー', text: '対象のサイクルが見つかりませんでした。' }); return; }
     const patient = patients.find(p => p.id === cycle.patient_id);
-    if (!patient) return;
+    if (!patient) { setInfoPopup({ title: 'エラー', text: '対象の患者が見つかりませんでした。' }); return; }
     const treatmentType = patient.treatment_type;
 
     // The requested ±N days is the ideal date. placeCycle returns the earliest
@@ -567,6 +568,11 @@ function PatientManager() {
           `${placed.treat.toLocaleDateString('ja-JP')} に調整しました。\n\n理由：\n・${reasonText}`,
       });
     }
+   } catch (err) {
+     const detail = err instanceof Error ? err.message : String(err);
+     setInfoPopup({ title: '延期処理でエラーが発生しました', text: detail });
+     setMessage({ type: 'error', text: `延期処理でエラー: ${detail}` });
+   }
   };
 
   const deletePatient = async (id: string) => {
