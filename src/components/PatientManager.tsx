@@ -523,13 +523,15 @@ function PatientManager() {
       return;
     }
 
+    // cycle.scheduled_date is already a "YYYY-MM-DD" string — compare directly.
+    const placedStr = formatDateToLocalString(placed.treat);
     // A "-N日" (前倒し) that couldn't actually move earlier — e.g. blocked by the
     // order deadline — must not silently jump later. Refuse and explain.
-    if (!forward && formatDateToLocalString(placed.treat) >= formatDateToLocalString(cycle.scheduled_date)) {
+    if (!forward && placedStr >= cycle.scheduled_date) {
       showBlocked('これ以上早い治療日に変更できません（発注締切・空き状況・治療日ルールのため）。');
       return;
     }
-    if (formatDateToLocalString(placed.treat) === formatDateToLocalString(cycle.scheduled_date)) {
+    if (placedStr === cycle.scheduled_date) {
       showBlocked('治療日は変更されませんでした（近くに空いている治療日がありません）。');
       return;
     }
