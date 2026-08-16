@@ -114,12 +114,14 @@ function PatientManager() {
     }[] = [];
 
     // Each cycle is placed near its ideal date: cycle 1 at the requested start,
-    // each next one intervalDays after the previous. placeCycle keeps the shift
-    // within 2 weeks and never uses a past date.
+    // each next one intervalDays after the previous. For a NEW patient we search
+    // far ahead (up to a year) so every requested cycle gets a free, non-
+    // overlapping slot — a busy schedule pushes a cycle later rather than
+    // dropping it. It uses the ideal slot with zero shift whenever it is free.
     let idealDate = new Date(startDate);
 
     for (let i = 0; i < cyclesPlanned; i++) {
-      const placed = placeCycle(treatmentType, idealDate);
+      const placed = freeSlotWithin(treatmentType, idealDate, undefined, 365);
       if (!placed) break;
 
       scheduledCycles.push({
@@ -212,10 +214,11 @@ function PatientManager() {
     treatmentType: 'lu-psma' | 'lutetium',
     fromDate: Date,
     excludeCycleId?: string,
+    maxDays: number = MAX_SHIFT_DAYS,
   ): Slot | null => {
     const start = clampToEarliest(fromDate);
     const limit = new Date(start);
-    limit.setDate(limit.getDate() + MAX_SHIFT_DAYS);
+    limit.setDate(limit.getDate() + maxDays);
 
     const d = new Date(start);
     while (d <= limit) {
@@ -403,15 +406,13 @@ function PatientManager() {
     for (const cycle of subsequentCycles) {
       if (cycle.status === 'cancelled') continue;
 
-      // Ideal date is intervalDays after the previous cycle. placeCycle keeps
-      // the shift within 2 weeks (excluding this cycle itself); if the window
-      // is full it keeps the interval and leaves an overlap for manual review.
+      // Ideal date is intervalDays after the previous cycle. Search far ahead
+      // so every subsequent cycle keeps a free, non-overlapping slot (busy
+      // weeks push it later rather than dropping it), excluding this cycle.
       const ideal = new Date(prevDate);
       ideal.setDate(ideal.getDate() + info.intervalDays);
 
-      const placed = placeCycle(treatmentType, ideal, cycle.id);
-      // No free slot within 2 weeks → stop cascading rather than create an
-      // overlap. Remaining cycles keep their current dates.
+      const placed = freeSlotWithin(treatmentType, ideal, cycle.id, 365);
       if (!placed) break;
 
       await invoke<Cycle>('update_cycle', {
