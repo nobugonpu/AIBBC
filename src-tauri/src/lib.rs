@@ -33,6 +33,8 @@ pub fn run() {
             commands::auth::unlock,
             commands::auth::lock,
             commands::auth::change_password,
+            commands::auth::is_admin_set,
+            commands::auth::set_admin_password,
             // settings / shared data folder
             commands::settings::get_data_location,
             commands::settings::pick_data_folder,
