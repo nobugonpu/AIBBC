@@ -682,11 +682,10 @@ function PatientManager() {
   };
 
   const getOccupancyStats = () => {
-    // RI room capacity = the treatment days (火曜日) in the current month;
-    // usage = treatments (non-cancelled cycles) scheduled that month.
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
+    // RI room capacity = the treatment days (火曜日) in the month shown in the
+    // occupancy calendar; usage = treatments scheduled that month.
+    const y = currentMonth.getFullYear();
+    const m = currentMonth.getMonth();
     const daysInMonth = new Date(y, m + 1, 0).getDate();
 
     let treatmentDays = 0;
