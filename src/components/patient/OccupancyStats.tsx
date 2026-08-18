@@ -30,7 +30,7 @@ export function OccupancyStats({ stats }: OccupancyStatsProps) {
         <div>※ 祝翌日、お盆（8/11-15）、年末年始（12/29-1/3）は納入なし</div>
         <div className="font-semibold text-red-600">※ 週キャパ制約：1週間に最大1件のLu-177治療のみ可能</div>
         <div className="font-semibold text-red-600">※ 発注締切：治療日の週の2週間前の月曜17時（締切後の治療日は予約不可）</div>
-        <div>※ 治療日は −7日 / +7日 / +14日 / +21日 で調整（延期は最長16週まで）</div>
+        <div>※ 治療日は −14日 / −7日 / +7日 / +14日 / +21日 で調整（延期は最長16週まで）</div>
       </div>
     </div>
   );

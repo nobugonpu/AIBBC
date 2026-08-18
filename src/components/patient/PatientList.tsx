@@ -232,6 +232,7 @@ function CycleViewRow({
           {canPostpone && (
             <>
               {[
+                { d: -14, label: '−14日' },
                 { d: -7, label: '−7日' },
                 { d: 7, label: '+7日' },
                 { d: 14, label: '+14日' },
