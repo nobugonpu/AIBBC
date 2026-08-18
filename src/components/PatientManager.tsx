@@ -682,21 +682,28 @@ function PatientManager() {
   };
 
   const getOccupancyStats = () => {
+    // RI room capacity = the treatment days (火曜日) in the current month;
+    // usage = treatments (non-cancelled cycles) scheduled that month.
     const now = new Date();
-    const next30Days = new Date(now);
-    next30Days.setDate(now.getDate() + 30);
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
 
-    const occupiedDates = getOccupiedDates().filter(slot => {
-      const date = new Date(slot.date);
-      return date >= now && date <= next30Days;
-    });
+    let treatmentDays = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      if (new Date(y, m, d).getDay() === 2) treatmentDays++; // Tuesday
+    }
 
-    const uniqueDates = new Set(occupiedDates.map(slot => slot.date));
+    const monthPrefix = `${y}-${String(m + 1).padStart(2, '0')}`;
+    const usedCount = cycles.filter(
+      c => c.status !== 'cancelled' && c.scheduled_date.startsWith(monthPrefix),
+    ).length;
 
     return {
-      totalDays: 30,
-      occupiedDays: uniqueDates.size,
-      utilizationRate: ((uniqueDates.size / 30) * 100).toFixed(1)
+      monthLabel: `${y}年${m + 1}月`,
+      treatmentDays,
+      usedCount,
+      utilizationRate: treatmentDays > 0 ? ((usedCount / treatmentDays) * 100).toFixed(1) : '0.0',
     };
   };
 

@@ -1,23 +1,29 @@
 interface OccupancyStatsProps {
   stats: {
-    totalDays: number;
-    occupiedDays: number;
+    monthLabel: string;
+    treatmentDays: number;
+    usedCount: number;
     utilizationRate: string;
   };
 }
 
 export function OccupancyStats({ stats }: OccupancyStatsProps) {
+  const free = Math.max(0, stats.treatmentDays - stats.usedCount);
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-      <h3 className="font-semibold text-blue-900 mb-2">病室稼働状況（今後30日間）</h3>
-      <div className="grid grid-cols-3 gap-4 text-sm mb-3">
+      <h3 className="font-semibold text-blue-900 mb-2">病室稼働状況（{stats.monthLabel}）</h3>
+      <div className="grid grid-cols-4 gap-4 text-sm mb-3">
         <div>
-          <div className="text-blue-600 font-medium">占有日数</div>
-          <div className="text-2xl font-bold text-blue-900">{stats.occupiedDays}日</div>
+          <div className="text-blue-600 font-medium">治療日（火）</div>
+          <div className="text-2xl font-bold text-blue-900">{stats.treatmentDays}日</div>
         </div>
         <div>
-          <div className="text-blue-600 font-medium">空き日数</div>
-          <div className="text-2xl font-bold text-blue-900">{stats.totalDays - stats.occupiedDays}日</div>
+          <div className="text-blue-600 font-medium">予約済み</div>
+          <div className="text-2xl font-bold text-blue-900">{stats.usedCount}件</div>
+        </div>
+        <div>
+          <div className="text-blue-600 font-medium">空き</div>
+          <div className="text-2xl font-bold text-blue-900">{free}件</div>
         </div>
         <div>
           <div className="text-blue-600 font-medium">稼働率</div>
