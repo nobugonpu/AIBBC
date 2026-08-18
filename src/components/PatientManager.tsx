@@ -688,9 +688,13 @@ function PatientManager() {
     const m = currentMonth.getMonth();
     const daysInMonth = new Date(y, m + 1, 0).getDate();
 
+    // Count only Tuesdays that can actually take a treatment — a week whose
+    // Mon/Tue/Wed is a holiday (or a non-delivery period) has no drug delivery
+    // and is excluded from the capacity.
     let treatmentDays = 0;
     for (let d = 1; d <= daysInMonth; d++) {
-      if (new Date(y, m, d).getDay() === 2) treatmentDays++; // Tuesday
+      const date = new Date(y, m, d);
+      if (date.getDay() === 2 && canDeliverTreatment(date, 'lutetium')) treatmentDays++;
     }
 
     const monthPrefix = `${y}-${String(m + 1).padStart(2, '0')}`;
