@@ -4,8 +4,17 @@ import type { Patient, Cycle, TreatmentInfoMap, CycleStatus, TreatmentType } fro
 import {
   getLuPsmaAdmissionDate, getLuPsmaDischargeDate,
   getLutetiumAdmissionDate, getLutetiumDischargeDate,
-  formatDateToLocalString,
+  formatDateToLocalString, getOrderDeadline,
 } from '../../utils/dateHelpers';
+
+const DOW = ['日', '月', '火', '水', '木', '金', '土'];
+// お薬の発注締切（治療日の週の2週間前 月曜17時）と、現時点での状態。
+function orderDeadlineInfo(scheduledDate: string): { label: string; status: 'passed' | 'soon' | 'ok' } {
+  const dl = getOrderDeadline(new Date(scheduledDate));
+  const label = `${dl.getMonth() + 1}/${dl.getDate()}(${DOW[dl.getDay()]}) 17時`;
+  const diffDays = (dl.getTime() - Date.now()) / 86400000;
+  return { label, status: diffDays < 0 ? 'passed' : diffDays <= 3 ? 'soon' : 'ok' };
+}
 
 // Admission/discharge derived from the treatment date (same rule as scheduling).
 function stayFromTreatment(treatmentType: TreatmentType, treatDate: string): { admissionDate: string; dischargeDate: string } {
@@ -97,6 +106,9 @@ function CycleEditRow({
             className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
           />
         </td>
+        <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap" title="お薬の発注締切">
+          {scheduledDate ? orderDeadlineInfo(scheduledDate).label : '—'}
+        </td>
         <td className="px-3 py-2 text-xs text-gray-400">—</td>
         <td className="px-3 py-2 text-xs text-gray-600" title="治療日から自動計算">{fmtJp(stay.admissionDate)}</td>
         <td className="px-3 py-2 text-xs text-gray-600" title="治療日から自動計算">{fmtJp(stay.dischargeDate)}</td>
@@ -143,7 +155,7 @@ function CycleEditRow({
       </tr>
       {hasSubsequent && dateChanged && (
         <tr className="bg-amber-50 border-t border-amber-200">
-          <td colSpan={8} className="px-4 pb-2 pt-1">
+          <td colSpan={9} className="px-4 pb-2 pt-1">
             <label className="flex items-center gap-2 text-xs text-amber-800 cursor-pointer select-none w-fit">
               <input
                 type="checkbox"
@@ -201,6 +213,21 @@ function CycleViewRow({
       <td className="px-3 py-2 text-sm text-gray-700">
         {new Date(cycle.scheduled_date).toLocaleDateString('ja-JP')}
       </td>
+      {(() => {
+        if (cycle.status !== 'scheduled') {
+          return <td className="px-3 py-2 text-sm text-gray-300">—</td>;
+        }
+        const dl = orderDeadlineInfo(cycle.scheduled_date);
+        const cls = dl.status === 'passed' ? 'text-red-600 font-semibold'
+          : dl.status === 'soon' ? 'text-amber-700 font-semibold' : 'text-gray-700';
+        return (
+          <td className={`px-3 py-2 text-sm whitespace-nowrap ${cls}`} title="お薬の発注締切（治療日の週の2週間前 月曜17時）">
+            {dl.label}
+            {dl.status === 'passed' && <span className="ml-1 text-xs">締切済</span>}
+            {dl.status === 'soon' && <span className="ml-1 text-xs">まもなく</span>}
+          </td>
+        );
+      })()}
       <td className="px-3 py-2 text-sm whitespace-nowrap">
         {intervalDays === null ? (
           <span className="text-gray-300">—</span>
@@ -414,6 +441,7 @@ export function PatientList({
                       <tr className="bg-white/50">
                         <th className="px-3 py-2 text-xs font-semibold text-gray-500 text-center w-16">サイクル</th>
                         <th className="px-3 py-2 text-xs font-semibold text-gray-500">治療日</th>
+                        <th className="px-3 py-2 text-xs font-semibold text-gray-500">発注締切</th>
                         <th className="px-3 py-2 text-xs font-semibold text-gray-500 w-24">前回間隔</th>
                         <th className="px-3 py-2 text-xs font-semibold text-gray-500">入院日</th>
                         <th className="px-3 py-2 text-xs font-semibold text-gray-500">退院日</th>

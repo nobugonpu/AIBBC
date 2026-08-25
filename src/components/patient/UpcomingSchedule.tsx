@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { CalendarClock, AlertTriangle } from 'lucide-react';
 import type { Patient, Cycle, TreatmentInfoMap } from '../../shared/contracts/patient';
+import { getOrderDeadline } from '../../utils/dateHelpers';
 
 interface UpcomingScheduleProps {
   patients: Patient[];
@@ -16,6 +17,17 @@ const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
 function fmt(dateStr: string): string {
   const d = new Date(dateStr);
   return `${d.getMonth() + 1}/${d.getDate()}(${dayLabels[d.getDay()]})`;
+}
+
+// Drug order deadline (Monday 17:00, two weeks before the treatment week),
+// with a status flag relative to now: passed / due soon / ok.
+function orderDeadlineInfo(scheduledDate: string): { label: string; status: 'passed' | 'soon' | 'ok' } {
+  const dl = getOrderDeadline(new Date(scheduledDate));
+  const label = `${dl.getMonth() + 1}/${dl.getDate()}(${dayLabels[dl.getDay()]}) 17時`;
+  const now = new Date();
+  const diffDays = (dl.getTime() - now.getTime()) / 86400000;
+  const status = diffDays < 0 ? 'passed' : diffDays <= 3 ? 'soon' : 'ok';
+  return { label, status };
 }
 
 export function UpcomingSchedule({ patients, cycles, treatmentInfo, conflictingCycleIds }: UpcomingScheduleProps) {
@@ -76,6 +88,7 @@ export function UpcomingSchedule({ patients, cycles, treatmentInfo, conflictingC
               <tr className="border-b border-gray-200">
                 <th className="px-3 py-2 text-xs font-semibold text-gray-500">入院日</th>
                 <th className="px-3 py-2 text-xs font-semibold text-gray-500">治療日</th>
+                <th className="px-3 py-2 text-xs font-semibold text-gray-500">発注締切</th>
                 <th className="px-3 py-2 text-xs font-semibold text-gray-500">退院日</th>
                 <th className="px-3 py-2 text-xs font-semibold text-gray-500">患者名</th>
                 <th className="px-3 py-2 text-xs font-semibold text-gray-500">治療種別</th>
@@ -98,6 +111,21 @@ export function UpcomingSchedule({ patients, cycles, treatmentInfo, conflictingC
                       {fmt(cycle.admission_date)}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-700">{fmt(cycle.scheduled_date)}</td>
+                    {(() => {
+                      const dl = orderDeadlineInfo(cycle.scheduled_date);
+                      const cls = dl.status === 'passed'
+                        ? 'text-red-600 font-semibold'
+                        : dl.status === 'soon'
+                          ? 'text-amber-700 font-semibold'
+                          : 'text-gray-700';
+                      return (
+                        <td className={`px-3 py-2 text-sm whitespace-nowrap ${cls}`} title="お薬の発注締切（治療日の週の2週間前 月曜17時）">
+                          {dl.label}
+                          {dl.status === 'passed' && <span className="ml-1 text-xs">締切済</span>}
+                          {dl.status === 'soon' && <span className="ml-1 text-xs">まもなく</span>}
+                        </td>
+                      );
+                    })()}
                     <td className="px-3 py-2 text-sm text-gray-700">{fmt(cycle.discharge_date)}</td>
                     <td className="px-3 py-2 text-sm font-medium text-gray-900">{patient.patient_name}</td>
                     <td className="px-3 py-2">
