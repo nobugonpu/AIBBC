@@ -40,6 +40,9 @@ pub fn run() {
             commands::settings::pick_data_folder,
             commands::settings::set_data_location,
             commands::settings::restart_app,
+            // audit log
+            commands::audit::get_audit_log,
+            commands::audit::export_audit_csv,
             // patients
             commands::patients::get_patients,
             commands::patients::get_cycles,

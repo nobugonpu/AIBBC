@@ -46,6 +46,8 @@ pub struct AppState {
     /// so the "where is the shared folder" setting travels with the machine.
     pub config_path: PathBuf,
     pub db: Mutex<DbState>,
+    /// Name of the person who unlocked this session, recorded in the audit log.
+    pub operator: Mutex<String>,
 }
 
 impl AppState {
@@ -54,6 +56,7 @@ impl AppState {
             paths: AppPaths::new(data_dir),
             config_path,
             db: Mutex::new(DbState::Locked),
+            operator: Mutex::new(String::new()),
         }
     }
 }

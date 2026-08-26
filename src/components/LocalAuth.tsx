@@ -10,6 +10,7 @@ interface Props {
 export default function LocalAuth({ onUnlocked }: Props) {
   const [isSetup, setIsSetup] = useState<boolean | null>(null);
   const [showDataLocation, setShowDataLocation] = useState(false);
+  const [operatorName, setOperatorName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -34,13 +35,18 @@ export default function LocalAuth({ onUnlocked }: Props) {
       setError('パスワードは8文字以上にしてください');
       return;
     }
+    if (!operatorName.trim()) {
+      setError('利用者名（氏名）を入力してください');
+      return;
+    }
 
     setLoading(true);
     try {
+      const operator = operatorName.trim();
       if (isSetup) {
-        await invoke('unlock', { password });
+        await invoke('unlock', { password, operator });
       } else {
-        await invoke('setup_password', { password });
+        await invoke('setup_password', { password, operator });
       }
       setPassword('');
       setConfirmPassword('');
@@ -104,6 +110,25 @@ export default function LocalAuth({ onUnlocked }: Props) {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Operator name — recorded in the audit log for every action */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                利用者名（氏名）
+              </label>
+              <input
+                type="text"
+                value={operatorName}
+                onChange={e => setOperatorName(e.target.value)}
+                required
+                autoFocus
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="例：山田 太郎"
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                操作履歴に記録されます（誰がいつ操作したかの記録）
+              </p>
+            </div>
+
             {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -115,7 +140,6 @@ export default function LocalAuth({ onUnlocked }: Props) {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
-                  autoFocus
                   className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="••••••••"
                 />

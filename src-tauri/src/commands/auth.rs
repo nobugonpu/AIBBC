@@ -22,7 +22,11 @@ pub fn is_unlocked(state: State<'_, AppState>) -> AppResult<bool> {
 /// First-time setup: generates salt, derives key, creates encrypted DB, runs migrations.
 /// Returns an error if already configured.
 #[tauri::command]
-pub fn setup_password(password: String, state: State<'_, AppState>) -> AppResult<()> {
+pub fn setup_password(
+    password: String,
+    operator: Option<String>,
+    state: State<'_, AppState>,
+) -> AppResult<()> {
     if state.paths.salt_path.exists() {
         return Err(AppError::AlreadyConfigured);
     }
@@ -50,15 +54,27 @@ pub fn setup_password(password: String, state: State<'_, AppState>) -> AppResult
         return Err(AppError::Io(e));
     }
 
+    let op = operator.unwrap_or_default();
     let mut guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
     *guard = DbState::Unlocked { conn, key };
+    if let DbState::Unlocked { conn, .. } = &*guard {
+        crate::commands::audit::write(conn, &op, "初回セットアップ", "");
+    }
+    drop(guard);
+    if let Ok(mut o) = state.operator.lock() {
+        *o = op;
+    }
     Ok(())
 }
 
 /// Reads the stored salt, re-derives the key from the given password,
 /// and opens the encrypted DB. Returns InvalidPassword on wrong password.
 #[tauri::command]
-pub fn unlock(password: String, state: State<'_, AppState>) -> AppResult<()> {
+pub fn unlock(
+    password: String,
+    operator: Option<String>,
+    state: State<'_, AppState>,
+) -> AppResult<()> {
     if !state.paths.salt_path.exists() {
         return Err(AppError::NotConfigured);
     }
@@ -72,8 +88,16 @@ pub fn unlock(password: String, state: State<'_, AppState>) -> AppResult<()> {
     // run_migrations is idempotent — ensures schema is up-to-date after updates.
     run_migrations(&conn)?;
 
+    let op = operator.unwrap_or_default();
     let mut guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
     *guard = DbState::Unlocked { conn, key };
+    if let DbState::Unlocked { conn, .. } = &*guard {
+        crate::commands::audit::write(conn, &op, "ロック解除", "");
+    }
+    drop(guard);
+    if let Ok(mut o) = state.operator.lock() {
+        *o = op;
+    }
     Ok(())
 }
 
@@ -82,8 +106,16 @@ pub fn unlock(password: String, state: State<'_, AppState>) -> AppResult<()> {
 /// until the user re-enters their password.
 #[tauri::command]
 pub fn lock(state: State<'_, AppState>) -> AppResult<()> {
+    let op = crate::commands::audit::operator_of(&state.operator);
     let mut guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
+    if let DbState::Unlocked { conn, .. } = &*guard {
+        crate::commands::audit::write(conn, &op, "ロック", "");
+    }
     *guard = DbState::Locked;
+    drop(guard);
+    if let Ok(mut o) = state.operator.lock() {
+        o.clear();
+    }
     Ok(())
 }
 
@@ -153,11 +185,19 @@ pub fn set_admin_password(
             let salt = generate_salt();
             let key = derive_key(&new_password, &salt);
             let value = format!("{}:{}", hex::encode(salt), hex::encode(key.0));
+            let first = existing.is_none();
             conn.execute(
                 "INSERT INTO app_config (key, value) VALUES ('admin_password', ?1)
                  ON CONFLICT(key) DO UPDATE SET value = ?1",
                 rusqlite::params![value],
             )?;
+            let op = crate::commands::audit::operator_of(&state.operator);
+            crate::commands::audit::write(
+                conn,
+                &op,
+                if first { "管理者パスワード設定" } else { "管理者パスワード変更" },
+                "",
+            );
             Ok(())
         }
     }
@@ -206,6 +246,8 @@ pub fn change_password(
             // Re-encrypt the live database with the new key (same salt).
             conn.execute_batch(&format!("PRAGMA rekey = \"x'{}'\";", new_hex))?;
             *key = new_key;
+            let op = crate::commands::audit::operator_of(&state.operator);
+            crate::commands::audit::write(conn, &op, "解除パスワード変更", "");
             Ok(())
         }
     }

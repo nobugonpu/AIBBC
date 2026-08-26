@@ -1,6 +1,6 @@
 use rusqlite::Connection;
 
-pub const CURRENT_SCHEMA_VERSION: i64 = 2;
+pub const CURRENT_SCHEMA_VERSION: i64 = 3;
 
 const SCHEMA_V1: &str = r#"
 CREATE TABLE IF NOT EXISTS app_config (
@@ -61,6 +61,18 @@ const SCHEMA_V2: &str = r#"
 ALTER TABLE treatment_cycles ADD COLUMN notes TEXT NOT NULL DEFAULT '';
 "#;
 
+// V3: append-only audit log (who did what, when) for accountability/transparency
+const SCHEMA_V3: &str = r#"
+CREATE TABLE IF NOT EXISTS audit_log (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  at       TEXT NOT NULL,
+  operator TEXT NOT NULL DEFAULT '',
+  action   TEXT NOT NULL,
+  detail   TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_audit_at ON audit_log(at);
+"#;
+
 pub fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch("PRAGMA foreign_keys = ON;")?;
 
@@ -82,6 +94,9 @@ pub fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
     }
     if current_version < 2 {
         conn.execute_batch(SCHEMA_V2)?;
+    }
+    if current_version < 3 {
+        conn.execute_batch(SCHEMA_V3)?;
     }
 
     conn.execute(

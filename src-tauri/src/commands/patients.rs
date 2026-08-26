@@ -181,6 +181,16 @@ pub fn add_patient(
             match result {
                 Ok(patient) => {
                     conn.execute_batch("COMMIT;")?;
+                    let op = crate::commands::audit::operator_of(&state.operator);
+                    crate::commands::audit::write(
+                        conn,
+                        &op,
+                        "患者追加",
+                        &format!(
+                            "{}（{}・{}サイクル）",
+                            patient.patient_name, patient.treatment_type, cycles_planned
+                        ),
+                    );
                     Ok(patient)
                 }
                 Err(e) => {
@@ -249,6 +259,25 @@ pub fn update_cycle(
                     })
                 },
             )?;
+
+            // Look up the patient name for a readable audit entry.
+            let pname: String = conn
+                .query_row(
+                    "SELECT patient_name FROM patients WHERE id = ?1",
+                    rusqlite::params![cycle.patient_id],
+                    |r| r.get(0),
+                )
+                .unwrap_or_default();
+            let op = crate::commands::audit::operator_of(&state.operator);
+            crate::commands::audit::write(
+                conn,
+                &op,
+                "サイクル変更",
+                &format!(
+                    "{} 第{}サイクル → 治療日{}・状態{}",
+                    pname, cycle.cycle_number, cycle.scheduled_date, cycle.status
+                ),
+            );
             Ok(cycle)
         }
     }
@@ -261,10 +290,20 @@ pub fn delete_patient(id: String, state: State<'_, AppState>) -> AppResult<()> {
     match &*guard {
         DbState::Locked => Err(AppError::Locked),
         DbState::Unlocked { conn, .. } => {
+            // Capture the name before deletion for the audit log.
+            let pname: String = conn
+                .query_row(
+                    "SELECT patient_name FROM patients WHERE id = ?1",
+                    rusqlite::params![id],
+                    |r| r.get(0),
+                )
+                .unwrap_or_default();
             conn.execute(
                 "DELETE FROM patients WHERE id = ?1",
                 rusqlite::params![id],
             )?;
+            let op = crate::commands::audit::operator_of(&state.operator);
+            crate::commands::audit::write(conn, &op, "患者削除", &pname);
             Ok(())
         }
     }

@@ -5,6 +5,7 @@ import PatientManager from './components/PatientManager';
 import { NavigationBar } from './components/app/NavigationBar';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { DataLocationModal } from './components/DataLocationModal';
+import { AuditLogModal } from './components/AuditLogModal';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 
 function AppContent() {
@@ -12,6 +13,7 @@ function AppContent() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showDataLocation, setShowDataLocation] = useState(false);
+  const [showAuditLog, setShowAuditLog] = useState(false);
 
   if (!unlocked) {
     return <LocalAuth onUnlocked={unlock} />;
@@ -26,6 +28,7 @@ function AppContent() {
             onSignOut={lock}
             onChangePassword={() => setShowChangePassword(true)}
             onDataLocation={() => setShowDataLocation(true)}
+            onAuditLog={() => setShowAuditLog(true)}
           />
         </div>
 
@@ -40,6 +43,8 @@ function AppContent() {
         )}
 
         {showDataLocation && <DataLocationModal onClose={() => setShowDataLocation(false)} />}
+
+        {showAuditLog && <AuditLogModal onClose={() => setShowAuditLog(false)} />}
 
         {message && (
           <div
