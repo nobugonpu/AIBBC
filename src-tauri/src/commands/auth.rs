@@ -175,17 +175,17 @@ pub fn set_admin_password(
                     |r| r.get(0),
                 )
                 .optional()?;
-            if let Some(stored) = existing {
+            let first = existing.is_none();
+            if let Some(stored) = &existing {
                 let cur = current
                     .ok_or_else(|| AppError::Other("現在の管理者パスワードを入力してください".into()))?;
-                if !verify_admin_hash(&stored, &cur) {
+                if !verify_admin_hash(stored, &cur) {
                     return Err(AppError::Other("現在の管理者パスワードが違います".into()));
                 }
             }
             let salt = generate_salt();
             let key = derive_key(&new_password, &salt);
             let value = format!("{}:{}", hex::encode(salt), hex::encode(key.0));
-            let first = existing.is_none();
             conn.execute(
                 "INSERT INTO app_config (key, value) VALUES ('admin_password', ?1)
                  ON CONFLICT(key) DO UPDATE SET value = ?1",
