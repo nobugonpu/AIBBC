@@ -185,6 +185,7 @@
       <li><a href="#print">印刷する</a></li>
       <li><a href="#calendar">カレンダーと稼働状況</a></li>
       <li><a href="#password">パスワードを変更する</a></li>
+      <li><a href="#audit">操作履歴（監査ログ）</a></li>
       <li><a href="#share">データ共有と注意点</a></li>
       <li><a href="#trouble">困ったとき（Q&amp;A）</a></li>
     </ol>
@@ -219,7 +220,7 @@
       </ol>
       <div class="note">
         <div class="lbl">画面はこれだけ</div>
-        <p>このアプリは<strong>患者管理</strong>の一画面に絞っています。上部のボタンは <span class="btn amber">保存先</span> <span class="btn">パスワード変更</span> <span class="btn">ロック</span> の3つです。</p>
+        <p>このアプリは<strong>患者管理</strong>の一画面に絞っています。上部のボタンは <span class="btn">操作履歴</span> <span class="btn amber">保存先</span> <span class="btn">パスワード変更</span> <span class="btn">ロック</span> の4つです。</p>
       </div>
     </section>
 
@@ -260,9 +261,11 @@
       <h2 class="sec"><span class="num">4</span>ロックを解除する（毎回）</h2>
       <ol class="steps">
         <li>アプリを開くと「Lu-177治療患者スケジューラ」のロック画面が出ます。</li>
+        <li><strong>利用者名（氏名）</strong>を入力します。<strong>ご自身の名前</strong>を入れてください。</li>
         <li><strong>解除パスワード</strong>（共通）を入力して「解錠」をクリック。</li>
         <li>患者管理画面が表示されます。</li>
       </ol>
+      <div class="note tip"><p>入力した<strong>氏名は操作履歴に記録</strong>されます（誰がいつ操作したかの記録）。共有で使う場合も、必ず<strong>操作する本人の名前</strong>を入れてください（→ <a href="#audit">操作履歴（監査ログ）</a>）。</p></div>
       <p>作業を終えたら、上部の <span class="btn">ロック</span> を押すと再びパスワードが必要になります。離席時はロックを推奨します。</p>
     </section>
 
@@ -392,8 +395,44 @@
       <div class="note crit"><p>新しいパスワードは<strong>必ず記録</strong>してください。忘れると管理者操作（解除パスワードの変更）ができなくなります。</p></div>
     </section>
 
+    <section id="audit">
+      <h2 class="sec"><span class="num">12</span>操作履歴（監査ログ）</h2>
+      <p class="lead">「誰が・いつ・何をしたか」を<strong>自動で記録</strong>します。ロック解除のときに入力した<strong>氏名</strong>とともに、患者の追加・削除や治療日の変更などが残ります。記録は<strong>あとから書き換え・削除ができません</strong>（追記のみ）。</p>
+
+      <h3>履歴を見る</h3>
+      <ol class="steps">
+        <li>上部の <span class="btn">操作履歴</span> をクリック。</li>
+        <li>新しい順に一覧が表示されます（<strong>日時・利用者・操作・詳細</strong>）。</li>
+        <li>更新（↻）ボタンで最新の状態に読み直せます。</li>
+      </ol>
+
+      <h3>記録される操作</h3>
+      <div class="twrap">
+        <table>
+          <thead><tr><th>操作</th><th>記録される内容</th></tr></thead>
+          <tbody>
+            <tr><td>ロック解除／ロック</td><td>いつ・誰がアプリを開いた／閉じたか。</td></tr>
+            <tr><td>患者追加／患者削除</td><td>患者名・治療種別・サイクル数など。</td></tr>
+            <tr><td>サイクル変更</td><td>どの患者の第何サイクルを、どの治療日・状態に変えたか。</td></tr>
+            <tr><td>パスワード設定・変更</td><td>管理者パスワード・解除パスワードの設定／変更。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>CSVで書き出す（監査・報告用）</h3>
+      <ol class="steps">
+        <li>操作履歴の画面で <span class="btn blue">CSVで保存</span> をクリック。</li>
+        <li>保存先を選ぶと、<strong>全件</strong>をCSVファイルに書き出します。</li>
+        <li>そのままExcelで開けます（文字化けしません）。</li>
+      </ol>
+      <div class="note ok">
+        <div class="lbl">この機能のねらい</div>
+        <p>操作履歴は、医療情報部から求められた<strong>「責任の所在の明確化」</strong>と<strong>「透明性」</strong>に対応する機能です。誰の操作かを氏名で残し、改ざんできない形で保存します。<strong>だからこそ、ロック解除時の氏名は正確に入力</strong>してください。</p>
+      </div>
+    </section>
+
     <section id="share">
-      <h2 class="sec"><span class="num">12</span>データ共有と注意点</h2>
+      <h2 class="sec"><span class="num">13</span>データ共有と注意点</h2>
       <p>院内共有フォルダを保存先にすると、複数PCで同じ患者スケジュールを共有できます。安全に使うため、次を守ってください。</p>
       <div class="note crit">
         <div class="lbl">同時編集はしない</div>
@@ -408,7 +447,7 @@
     </section>
 
     <section id="trouble">
-      <h2 class="sec"><span class="num">13</span>困ったとき（Q&amp;A）</h2>
+      <h2 class="sec"><span class="num">14</span>困ったとき（Q&amp;A）</h2>
 
       <details class="faq"><summary>患者を追加したのに1サイクルしか登録されない</summary><div class="a">最新版で修正済みです。アプリが古い場合は管理者に更新を依頼してください。祝日の多い時期は空き探索の結果、日程が後ろにずれることがありますが、全サイクル登録されます。</div></details>
 
@@ -423,6 +462,10 @@
       <details class="faq"><summary>解除パスワードを忘れた</summary><div class="a">暗号化のため、パスワードなしでデータを復元することはできません。バックアップの有無を含め、管理者にご確認ください。</div></details>
 
       <details class="faq"><summary>既に重複・過去日で登録された古いデータがある</summary><div class="a">自動修正はされません。延期ボタンや編集で調整するか、削除して登録し直してください（新規登録すれば正しく配置されます）。</div></details>
+
+      <details class="faq"><summary>誰がいつ変更したのか確認したい</summary><div class="a">上部の <span class="btn">操作履歴</span> を開くと、氏名・日時つきの記録を新しい順に確認できます。全件は「CSVで保存」で書き出せます（→ <a href="#audit">操作履歴（監査ログ）</a>）。</div></details>
+
+      <details class="faq"><summary>ロック解除のときに名前を入れる欄が増えた</summary><div class="a">操作履歴に「誰が操作したか」を残すためです。<strong>操作するご本人の氏名</strong>を入力してください。空欄では解錠できません。</div></details>
     </section>
 
   </main>

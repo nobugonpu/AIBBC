@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lu-177治療患者スケジューラ セキュリティ要点</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --bg:#f5f8fc;--surface:#fff;--surface-2:#eef3f9;--ink:#16202e;--ink-soft:#55647c;--ink-faint:#8a99b0;
+    --border:#e2e9f1;--blue:#1f5fbf;--blue-bg:#eef4ff;--blue-ink:#1a4894;
+    --green:#0f9d6e;--green-bg:#eafaf3;--green-ink:#0a6b4b;--amber:#b45309;--amber-bg:#fff7ea;--amber-line:#f0c680;
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);
+  }
+  @media(prefers-color-scheme:dark){:root{
+    --bg:#0d1420;--surface:#151d2b;--surface-2:#1c2637;--ink:#e7edf6;--ink-soft:#a7b4c9;--ink-faint:#6c7b93;
+    --border:#263143;--blue:#6b9bff;--blue-bg:#16233c;--blue-ink:#bcd0ff;
+    --green:#35d39c;--green-bg:#10281f;--green-ink:#86efc5;--amber:#f6be5f;--amber-bg:#2a2012;--amber-line:#5a4520;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.45);
+  }}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;font-size:14px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:840px;margin:0 auto;padding:0 22px 48px}
+  header.mast{padding:30px 0 16px;border-bottom:3px solid var(--blue);margin-bottom:16px}
+  .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.09em;color:var(--blue);background:var(--blue-bg);padding:4px 12px;border-radius:999px;display:inline-block}
+  header.mast h1{font-size:clamp(21px,3.2vw,27px);font-weight:700;margin:12px 0 4px;text-wrap:balance}
+  header.mast .meta{color:var(--ink-soft);font-size:13px}
+  .summary{background:var(--blue-bg);border:1px solid color-mix(in srgb,var(--blue) 30%,transparent);color:var(--blue-ink);border-radius:10px;padding:12px 16px;font-size:13.5px;margin-bottom:8px}
+  h2{font-size:16px;font-weight:700;margin:22px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;gap:9px;align-items:center}
+  h2 .n{font-size:12px;color:#fff;background:var(--blue);min-width:23px;height:23px;border-radius:6px;display:inline-grid;place-items:center;font-weight:700}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:10px 0}
+  @media(max-width:640px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 15px;box-shadow:var(--shadow)}
+  .card h3{margin:0 0 4px;font-size:14px;display:flex;gap:7px;align-items:center}
+  .card h3 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex:none}
+  .card p{margin:0;font-size:12.8px;color:var(--ink-soft)}
+  .card .tag{display:inline-block;font-size:11px;font-weight:700;color:var(--green-ink);background:var(--green-bg);border:1px solid color-mix(in srgb,var(--green) 30%,transparent);border-radius:5px;padding:1px 7px;margin-top:6px}
+  .twrap{overflow-x:auto;margin:10px 0;border:1px solid var(--border);border-radius:10px}
+  table{width:100%;border-collapse:collapse;font-size:12.8px}
+  th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--border);vertical-align:top}
+  thead th{background:var(--surface-2);color:var(--ink-soft);font-weight:700;font-size:12px;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  .k{color:var(--green);font-weight:700}
+  .note{border-radius:9px;padding:11px 14px;margin:12px 0;font-size:12.8px;border:1px solid var(--amber-line);background:var(--amber-bg);color:var(--amber)}
+  .note .lbl{font-weight:700;margin-bottom:2px}
+  footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--border);color:var(--ink-faint);font-size:11.5px;text-align:center}
+  @media print{body{background:#fff;color:#000;font-size:10pt}.wrap{max-width:none;padding:0}.card,.twrap,.note{page-break-inside:avoid}h2{page-break-after:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <span class="eyebrow">医療情報部 ご確認用 ／ 1枚要点</span>
+    <h1>Lu-177治療患者スケジューラ セキュリティ要点</h1>
+    <div class="meta">対象アプリ：Lu-177治療患者スケジューラ（Windows x64 デスクトップ）／作成日：〔　年　月　日〕／申請部署：〔部署名〕</div>
+  </header>
+
+  <div class="summary">
+    <strong>結論：</strong>患者データは<strong>院外に一切送信せず</strong>、保存時は<strong>AES-256で暗号化</strong>。アクセスは<strong>共有パスワード＋フォルダ権限</strong>で限定し、全操作を<strong>氏名つきの改ざん不可な操作履歴</strong>で記録します。データは標準SQLite形式で<strong>移行可能</strong>（ベンダーロックインなし）。
+  </div>
+
+  <h2><span class="n">1</span>データ保護（機密性）</h2>
+  <div class="grid">
+    <div class="card"><h3><span class="dot"></span>院外通信なし</h3><p>インターネット送信・クラウド保存を一切行わない完全オンプレミス動作。<span class="tag">通信ゼロ</span></p></div>
+    <div class="card"><h3><span class="dot"></span>保存データの暗号化</h3><p>SQLCipherによる<strong>AES-256</strong>暗号化。鍵はパスワードから<strong>PBKDF2 60万回</strong>で導出。<span class="tag">AES-256</span></p></div>
+    <div class="card"><h3><span class="dot"></span>端末に平文を残さない</h3><p>患者データは共有サーバー側に保存。端末内に平文の患者情報を残さない。<span class="tag">平文なし</span></p></div>
+    <div class="card"><h3><span class="dot"></span>自動ロック</h3><p>15分間無操作で自動的にロックし、再度パスワードを要求。<span class="tag">15分</span></p></div>
+  </div>
+
+  <h2><span class="n">2</span>アクセス制御（認証・認可）</h2>
+  <div class="twrap"><table>
+    <thead><tr><th>層</th><th>制御内容</th></tr></thead>
+    <tbody>
+      <tr><td>起動時</td><td>共通の<strong>解除パスワード（8文字以上）</strong>を知る利用者のみ復号・閲覧可能。</td></tr>
+      <tr><td>設定変更</td><td>解除パスワードの変更は<strong>管理者パスワードでのみ可能</strong>（一般利用者は変更不可）。</td></tr>
+      <tr><td>保存先</td><td><strong>貴部管理の正規ファイルサーバー</strong>に置き、<strong>フォルダ権限（ACL）</strong>でWGメンバーに限定。</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2><span class="n">3</span>追跡可能性・透明性（監査）</h2>
+  <div class="grid">
+    <div class="card"><h3><span class="dot"></span>操作履歴（監査ログ）</h3><p>起動時に<strong>氏名入力を必須</strong>とし、「誰が・いつ・何をしたか」を自動記録。<span class="tag">実装済み</span></p></div>
+    <div class="card"><h3><span class="dot"></span>改ざん防止</h3><p>ログは<strong>追記専用</strong>。アプリ上に編集・削除の手段を設けていない。<span class="tag">追記のみ</span></p></div>
+    <div class="card"><h3><span class="dot"></span>監査対応（CSV）</h3><p>全件を<strong>CSVで書き出し</strong>、監査・報告に提出可能。<span class="tag">CSV出力</span></p></div>
+    <div class="card"><h3><span class="dot"></span>ソース公開</h3><p>ソースコードを貴部にて<strong>レビュー・再ビルド可能</strong>。挙動を隠さない。<span class="tag">全公開</span></p></div>
+  </div>
+
+  <h2><span class="n">4</span>継続性・可搬性（属人化の排除）</h2>
+  <div class="twrap"><table>
+    <thead><tr><th>観点</th><th>対応</th></tr></thead>
+    <tbody>
+      <tr><td>担当者交代</td><td>ビルド・配布手順を文書化。<span class="k">他の技術者が再ビルド・保守可能</span>（特定個人に依存しない）。</td></tr>
+      <tr><td>責任体制</td><td>管理主体＝〔部署名〕、責任者・副責任者の<strong>二名体制</strong>。</td></tr>
+      <tr><td>データ移行</td><td>標準<strong>SQLite形式</strong>のため、アプリ廃止時もデータの取り出し・移行が可能。<span class="k">ロックインなし</span></td></tr>
+      <tr><td>バックアップ</td><td>保存先ファイルサーバーの<strong>定期バックアップ</strong>は貴部運用に準拠。</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note">
+    <div class="lbl">ご相談事項</div>
+    患者氏名を扱うため、保存先として<strong>貴部管理のファイルサーバー領域</strong>をお借りできるようご検討ください。アクセス権限とバックアップを貴部運用下に置くことで、機微情報の管理責任を明確化できます。<strong>同時編集はデータ破損の恐れがあるため、運用上「編集は1人ずつ」</strong>とします。
+  </div>
+
+  <footer>Lu-177治療患者スケジューラ セキュリティ要点（医療情報部向け1枚要点）／詳細は「導入提案書」をご参照ください。／院内配布・印刷・PDF保存が可能です。</footer>
+
+</div>
+</body>
+</html>
