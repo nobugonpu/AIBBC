@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lu-177治療患者スケジューラ 導入提案書</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --bg:#f5f8fc;--surface:#fff;--surface-2:#eef3f9;--ink:#16202e;--ink-soft:#55647c;--ink-faint:#8a99b0;
+    --border:#e2e9f1;--border-strong:#cdd8e4;--blue:#1f5fbf;--blue-bg:#eef4ff;--blue-ink:#1a4894;
+    --green:#0f9d6e;--green-bg:#eafaf3;--green-ink:#0a6b4b;--amber:#b45309;--amber-bg:#fff7ea;--amber-line:#f0c680;
+    --red:#c02626;--red-bg:#fdf0f0;--red-line:#f2b6b6;--shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);
+  }
+  @media(prefers-color-scheme:dark){:root{
+    --bg:#0d1420;--surface:#151d2b;--surface-2:#1c2637;--ink:#e7edf6;--ink-soft:#a7b4c9;--ink-faint:#6c7b93;
+    --border:#263143;--border-strong:#35415a;--blue:#6b9bff;--blue-bg:#16233c;--blue-ink:#bcd0ff;
+    --green:#35d39c;--green-bg:#10281f;--green-ink:#86efc5;--amber:#f6be5f;--amber-bg:#2a2012;--amber-line:#5a4520;
+    --red:#f78a8a;--red-bg:#2a1618;--red-line:#59292b;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.45);
+  }}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;font-size:15px;line-height:1.75;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:0 24px 64px}
+  header.mast{padding:40px 0 22px;border-bottom:3px solid var(--blue);margin-bottom:8px}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.09em;color:var(--blue);background:var(--blue-bg);padding:4px 12px;border-radius:999px;display:inline-block}
+  header.mast h1{font-size:clamp(24px,3.6vw,32px);font-weight:700;margin:14px 0 4px;text-wrap:balance}
+  header.mast .meta{color:var(--ink-soft);font-size:14px}
+  h2{font-size:19px;font-weight:700;margin:34px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:baseline}
+  h2 .n{font-size:13px;color:#fff;background:var(--blue);min-width:26px;height:26px;border-radius:7px;display:inline-grid;place-items:center;align-self:center;font-weight:700}
+  h3{font-size:15.5px;font-weight:700;margin:20px 0 6px}
+  p{margin:9px 0}
+  ul,ol{margin:9px 0;padding-left:22px} li{margin:4px 0}
+  strong{font-weight:700}
+  .note{border-radius:10px;padding:13px 16px;margin:14px 0;border:1px solid var(--border);background:var(--surface);font-size:14px}
+  .note .lbl{font-weight:700;margin-bottom:3px}
+  .note.tip{background:var(--blue-bg);border-color:color-mix(in srgb,var(--blue) 30%,transparent);color:var(--blue-ink)}
+  .note.warn{background:var(--amber-bg);border-color:var(--amber-line);color:var(--amber)}
+  .note.ok{background:var(--green-bg);border-color:color-mix(in srgb,var(--green) 30%,transparent);color:var(--green-ink)}
+  .twrap{overflow-x:auto;margin:14px 0;border:1px solid var(--border);border-radius:10px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  thead th{background:var(--surface-2);color:var(--ink-soft);font-weight:700;font-size:12.5px;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  .k{color:var(--green);font-weight:700}
+  .x{color:var(--red);font-weight:700}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);margin:14px 0}
+  .sig{margin-top:16px;color:var(--ink-soft);font-size:13.5px}
+  code{font-family:Consolas,monospace;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:.88em}
+  footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);color:var(--ink-faint);font-size:12px;text-align:center}
+  @media print{body{background:#fff;color:#000;font-size:10.5pt}.wrap{max-width:none;padding:0}.note,.card,.twrap{page-break-inside:avoid}h2{page-break-after:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <span class="eyebrow">医療情報部 ご検討用</span>
+    <h1>Lu-177治療患者スケジューラ 導入提案書</h1>
+    <div class="meta">提出先：医療情報部　／　申請部署：〔核医学科／◯◯科〕　／　作成日：〔　年　月　日〕</div>
+  </header>
+
+  <p class="note tip"><strong>本提案の要旨：</strong>本ツールを「個人が作った非公式アプリ」ではなく、<strong>〔部署名〕が管理主体となる院内公式の部門ツール</strong>として、責任体制・セキュリティ・保守継続の枠組みを整えたうえで正式導入いただきたく提案します。ご指摘いただいた「責任の所在」「セキュリティ」「管理者不在時の継続性」の3点に、以下のとおり対応します。</p>
+
+  <h2><span class="n">1</span>目的と背景（患者安全の向上）</h2>
+  <p>ルタテラ（Lu-177 dotatate）・プルヴィクト（Lu-177 PSMA-617）の治療は、<strong>薬剤の発注締切・治療間隔・病床（RI病室）の重複・祝日による非入荷</strong>など、手作業では見落としやすい制約が多く、予約ミスは治療遅延や薬剤ロスに直結します。本ツールはこれらを自動でチェックし、<strong>発注締切超過・日程重複・過去日</strong>の予約を防止します。現在の紙・表計算での管理に比べ、<strong>ヒューマンエラーの低減＝患者安全の向上</strong>を目的とします。</p>
+
+  <h2><span class="n">2</span>アプリ概要</h2>
+  <div class="twrap"><table>
+    <tbody>
+      <tr><th>種別</th><td>Windows デスクトップアプリ（64bit/x64）。各PCにインストールして使用。</td></tr>
+      <tr><th>取扱データ</th><td>患者氏名・治療種別・入院/治療/退院日・ステータス・メモ（＝患者の治療予定情報）。</td></tr>
+      <tr><th>ネットワーク</th><td><span class="k">院外へ一切通信しません</span>（インターネット送信・クラウド保存なし）。完全オンプレミス動作。</td></tr>
+      <tr><th>データ保存</th><td>暗号化データベース（SQLite＋SQLCipher）。指定した保存先フォルダに保存。</td></tr>
+      <tr><th>ソースコード</th><td>全公開（社内/GitHub）。第三者によるレビュー・再ビルドが可能。</td></tr>
+      <tr><th>医療機器該当性</th><td>診断・治療の判断を行わない予定管理ツールのため、通常は薬機法上の医療機器に非該当（貴部で最終確認をお願いします）。</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2><span class="n">3</span>指摘①への対応 ― 責任の所在の明確化</h2>
+  <ul>
+    <li><strong>施設への帰属：</strong>ソースコード一式を〔病院名〕へ譲渡し、院の資産として管理いただきます（特定個人の所有物にしません）。</li>
+    <li><strong>管理主体と責任者の明文化：</strong>管理主体＝<strong>〔部署名〕</strong>、<strong>責任者〔氏名〕・副責任者〔氏名〕</strong>の二名体制とします。</li>
+    <li><strong>正式承認プロセス：</strong>本提案書をもって〔医療情報委員会／医療安全管理委員会〕にお諮りいただき、<strong>組織としての承認</strong>を得たうえで運用します。</li>
+    <li><strong>運用規程の整備：</strong>利用者・利用目的・データ取扱い・保守手順を規程化し、貴部の管理下に置きます。</li>
+  </ul>
+
+  <h2><span class="n">4</span>指摘②への対応 ― セキュリティ</h2>
+  <div class="twrap"><table>
+    <thead><tr><th>観点</th><th>対策</th></tr></thead>
+    <tbody>
+      <tr><td>外部流出</td><td><span class="k">院外通信なし</span>＋保存データは<strong>AES-256で暗号化</strong>（SQLCipher、鍵はパスワードから PBKDF2 600,000回で導出）。パスワードを知る利用者のみ復号可能。</td></tr>
+      <tr><td>保存場所</td><td><strong>貴部管理の正規ファイルサーバー</strong>に保存し、<strong>フォルダのアクセス権限（ACL）</strong>でルタテラWGメンバーのみに限定。定期バックアップも貴部運用に準拠。</td></tr>
+      <tr><td>端末紛失</td><td>患者データは共有サーバー側に保存し、<strong>端末内に平文の患者情報を残しません</strong>。アプリは<strong>15分無操作で自動ロック</strong>。</td></tr>
+      <tr><td>不正利用</td><td>起動時パスワード（ロック解除）に加え、<strong>共有パスワードの変更は管理者パスワードでのみ可能</strong>（一般利用者は変更不可）。</td></tr>
+      <tr><td>透明性</td><td>ソースコードを貴部にて<strong>レビュー可能</strong>。挙動を隠しません。</td></tr>
+      <tr><td>操作履歴（監査ログ）</td><td>現状は個人単位の操作ログを保持していません。<strong>貴部が必須とされる場合は追加実装します</strong>（誰がいつ変更したかの記録）。</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note warn"><strong>ご相談事項：</strong>患者氏名を扱うため、保存先は<strong>貴部管理のファイルサーバー</strong>をお借りできるようご検討ください。アクセス権限・バックアップを貴部運用下に置くことで、機微情報の管理責任を明確化できます。</p>
+
+  <h2><span class="n">5</span>指摘③への対応 ― 管理者不在時の継続性（属人化の排除）</h2>
+  <ul>
+    <li><strong>ソース公開＋手順書：</strong>ビルド・配布手順を文書化しており、担当者が交代しても<strong>他の技術者が再ビルド・保守可能</strong>です（特定個人に依存しません）。</li>
+    <li><strong>技術情報の納品：</strong>技術仕様・データ構造・ビルド環境（Node.js／Rust／Tauri）を貴部へ提出します。</li>
+    <li><strong>二名体制と引き継ぎ：</strong>責任者・副責任者を置き、退職・異動時の引き継ぎ手順を規程化します。</li>
+    <li><strong>低保守性：</strong>本アプリは小規模・単機能で外部依存が少なく、日常的な保守はほぼ不要です。</li>
+    <li><strong>データの可搬性：</strong>データは標準的なSQLite形式のため、万一アプリを廃止しても<strong>データは取り出し・移行が可能</strong>です（ベンダーロックインなし）。</li>
+  </ul>
+
+  <h2><span class="n">6</span>リスク評価と対策（一覧）</h2>
+  <div class="twrap"><table>
+    <thead><tr><th>リスク</th><th>影響</th><th>対策</th></tr></thead>
+    <tbody>
+      <tr><td>患者情報の漏洩</td><td>大</td><td>暗号化＋オンプレ＋ACL＋端末に平文を残さない</td></tr>
+      <tr><td>同時編集によるデータ破損</td><td>中</td><td>運用規則で<strong>編集は1人ずつ</strong>＋定期バックアップ</td></tr>
+      <tr><td>担当者不在による停止</td><td>中</td><td>ソース公開＋手順書＋二名体制＋データ可搬性</td></tr>
+      <tr><td>不正変更の追跡不可</td><td>中</td><td>必要に応じ操作ログを追加実装</td></tr>
+      <tr><td>パスワード紛失</td><td>中</td><td>管理者による厳重管理＋バックアップ</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2><span class="n">7</span>導入ステップ（段階導入のご提案）</h2>
+  <ol>
+    <li><strong>第1段階：</strong>貴部によるソースレビュー・セキュリティ確認、医療機器該当性の確認。</li>
+    <li><strong>第2段階：</strong>保存先ファイルサーバーの貸与・ACL設定、責任体制と運用規程の承認。</li>
+    <li><strong>第3段階：</strong>ルタテラWGで試験運用（少人数）→ 問題なければ本運用。</li>
+  </ol>
+
+  <h2><span class="n">8</span>医療情報部へのお願い</h2>
+  <div class="card">
+    <ul style="margin:0">
+      <li>本ツールの<strong>ソースレビュー</strong>と<strong>医療機器該当性の確認</strong></li>
+      <li>患者データ保存用に<strong>貴部管理のファイルサーバー領域の貸与</strong>とアクセス権限設定</li>
+      <li><strong>承認プロセス（委員会付議）</strong>のご案内</li>
+      <li>操作ログ等、貴部として<strong>必須とされる要件のご提示</strong>（追加実装で対応します）</li>
+    </ul>
+  </div>
+
+  <p class="sig">申請部署：〔部署名〕／責任者：〔氏名〕・副責任者：〔氏名〕／連絡先：〔内線・メール〕</p>
+
+  <footer>Lu-177治療患者スケジューラ 導入提案書（医療情報部向け）／本書は院内配布・印刷・PDF保存が可能です。</footer>
+
+</div>
+</body>
+</html>
