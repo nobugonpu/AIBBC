@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>オフライン運用 想定問答集</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+  :root{--bg:#f5f8fc;--surface:#fff;--surface-2:#eef3f9;--ink:#16202e;--soft:#55647c;--faint:#8a99b0;
+    --border:#e2e9f1;--blue:#1f5fbf;--blue-bg:#eef4ff;--green:#0f9d6e;--green-bg:#eafaf3;--green-ink:#0a6b4b;
+    --amber:#b45309;--amber-bg:#fff7ea;--amber-line:#f0c680;--red:#c02626;--red-bg:#fdf0f0;--shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);}
+  @media(prefers-color-scheme:dark){:root{--bg:#0d1420;--surface:#151d2b;--surface-2:#1c2637;--ink:#e7edf6;
+    --soft:#a7b4c9;--faint:#6c7b93;--border:#263143;--blue:#6b9bff;--blue-bg:#16233c;--green:#35d39c;
+    --green-bg:#10281f;--green-ink:#86efc5;--amber:#f6be5f;--amber-bg:#2a2012;--amber-line:#5a4520;--red:#f78a8a;--red-bg:#2a1618;}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;font-size:15px;line-height:1.75}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px 64px}
+  header.mast{padding:34px 0 18px;border-bottom:3px solid var(--blue);margin-bottom:12px}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.09em;color:var(--blue);background:var(--blue-bg);padding:4px 12px;border-radius:999px;display:inline-block}
+  header.mast h1{font-size:clamp(22px,3.2vw,29px);font-weight:700;margin:12px 0 4px}
+  header.mast .meta{color:var(--soft);font-size:14px}
+  h2{font-size:18px;font-weight:700;margin:28px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center}
+  h2 .n{font-size:12px;color:#fff;background:var(--blue);min-width:24px;height:24px;border-radius:6px;display:inline-grid;place-items:center;font-weight:700}
+  p{margin:9px 0}
+  .qa{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:2px 16px 12px;margin:12px 0;box-shadow:var(--shadow)}
+  .q{font-weight:700;margin:14px 0 6px;display:flex;gap:9px;align-items:baseline}
+  .q .badge{flex:none;font-size:12px;font-weight:700;color:#fff;background:var(--blue);border-radius:6px;padding:2px 9px}
+  .a{margin:6px 0;padding-left:4px}
+  .a .badge{font-size:12px;font-weight:700;color:var(--green-ink);background:var(--green-bg);border:1px solid color-mix(in srgb,var(--green) 30%,transparent);border-radius:6px;padding:1px 8px;margin-right:6px}
+  .twrap{overflow-x:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  thead th{background:var(--surface-2);color:var(--soft);font-weight:700;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  .note{border-radius:10px;padding:12px 16px;margin:14px 0;border:1px solid var(--border);font-size:14px}
+  .note.tip{background:var(--blue-bg);border-color:color-mix(in srgb,var(--blue) 30%,transparent)}
+  .note.ok{background:var(--green-bg);border-color:color-mix(in srgb,var(--green) 30%,transparent);color:var(--green-ink)}
+  .note.warn{background:var(--amber-bg);border-color:var(--amber-line);color:var(--amber)}
+  .note .lbl{font-weight:700;margin-bottom:3px}
+  .rec{font-weight:700;color:var(--green-ink)}
+  footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--border);color:var(--faint);font-size:12px;text-align:center}
+  @media print{body{background:#fff;color:#000;font-size:10.5pt}.wrap{max-width:none;padding:0}.qa,.note,.twrap{page-break-inside:avoid}h2{page-break-after:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <span class="eyebrow">RI室 内部資料 ／ 説明準備用</span>
+    <h1>オフライン運用に関する 想定問答集</h1>
+    <div class="meta">Lu-177治療スケジューラ／メール端末上でのオフライン（通信なし）運用の検討にあたって</div>
+  </header>
+
+  <p>医療情報部（樋脇係長）や委員会から想定される質問と、その回答例をまとめました。<strong>回答例はたたき台</strong>です。院の実情に合わせて調整してご使用ください。</p>
+
+  <div class="note tip">
+    <div class="lbl">まず結論（推奨する運用モデル）</div>
+    <strong>「親機1台方式」＋定期バックアップ＋患者ID中心の管理</strong>を推奨します。入力・保存はRI室の指定端末1台のみで行い、他メンバーには<strong>印刷した予定表</strong>で共有。同時編集による破損がなく、最もシンプルで安全です。共有の本格対応は、正式システム調達までの将来課題とします。
+  </div>
+
+  <h2><span class="n">1</span>最重要：データ共有について</h2>
+
+  <div class="qa">
+    <div class="q"><span class="badge">Q1</span>オフライン運用では、複数メンバーでどうやってデータを共有するのか？</div>
+    <div class="a"><span class="badge">A</span>完全な同時共有はオフライン単体では困難です。現実的には次の3案があり、<span class="rec">当面は案1を推奨</span>します。</div>
+    <div class="twrap"><table>
+      <thead><tr><th>案</th><th>やり方</th><th>長所</th><th>短所</th></tr></thead>
+      <tbody>
+        <tr><td><strong>案1<br>親機1台方式</strong><br><span class="rec">推奨</span></td><td>入力・保存は指定した<strong>1台の端末のみ</strong>。他メンバーは<strong>印刷した予定表</strong>で共有</td><td>同時編集の破損なし。仕組みが単純で安全。すぐ始められる</td><td>入力は1台に集約（担当を決める必要）</td></tr>
+        <tr><td><strong>案2<br>データ受け渡し</strong></td><td>アプリからデータを<strong>1つのファイル</strong>に書き出し、許可された場所・媒体で受け渡し</td><td>複数端末で持ち回れる</td><td>置き場所・受け渡し手段に許可が必要。版の管理に注意</td></tr>
+        <tr><td><strong>案3<br>情報部サーバー</strong></td><td>情報部管理の正規サーバーで一元管理</td><td>本来の理想形。同時共有が可能</td><td>体制・調達が必要（＝正式システムの領域）</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="badge">Q2</span>データはどこに保存される？端末を変えたら消えるのか？</div>
+    <div class="a"><span class="badge">A</span>オフラインの場合、データは<strong>その端末（ブラウザ）内に保存</strong>され、別端末・別ブラウザとは共有されません。だからこそ「親機1台方式」が管理しやすくなります。消失に備え、<strong>定期的にデータを書き出しファイルとして保存</strong>します。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="badge">Q3</span>バックアップ・データ消失対策は？</div>
+    <div class="a"><span class="badge">A</span>親機端末で<strong>定期的にデータを書き出し</strong>、許可された保存場所に保管します。端末故障やブラウザ初期化に備えます。頻度（例：週1回、締切ごと）は運用規程で定めます。</div>
+  </div>
+
+  <h2><span class="n">2</span>セキュリティ・データ保護</h2>
+
+  <div class="qa">
+    <div class="q"><span class="badge">Q4</span>患者情報が外部に漏れる心配はないか？</div>
+    <div class="a"><span class="badge">A</span><strong>インターネット・院内網に一切通信しません（完全オフライン）。</strong>保存データは暗号化します。保存場所は情報部のご指示に従います。さらに、<strong>患者氏名を持たず患者ID中心で運用</strong>することも可能で、その場合は個人情報の保有そのものを最小化できます。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="badge">Q5</span>マクロ（VBA）は使うのか？（Accessで問題になった点）</div>
+    <div class="a"><span class="badge">A</span><strong>使いません。</strong>オフラインHTMLはブラウザの標準機能のみで動作し、マクロ実行を伴いません。Accessで懸念されたマクロ制限には該当しません。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="badge">Q6</span>HTMLファイルの改ざん・マルウェアのリスクは？</div>
+    <div class="a"><span class="badge">A</span>ファイルの中身は<strong>情報部でレビュー（内容確認）可能</strong>です。動作はブラウザ内に限られ、外部通信は行いません。配置場所と変更管理（誰がいつ更新したか）を規程化し、正規のファイルのみを使用します。</div>
+  </div>
+
+  <h2><span class="n">3</span>可用性・保守・体制</h2>
+
+  <div class="qa">
+    <div class="q"><span class="badge">Q7</span>誰が保守するのか？属人化しないか？</div>
+    <div class="a"><span class="badge">A</span><strong>単一のHTMLファイル</strong>で構造が単純なため、ExcelやAccessよりむしろ保守は容易です（更新は<strong>ファイル1つの差し替え</strong>）。ソース公開・手順書・<strong>責任者／副責任者の二名体制</strong>で属人化を排除します。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="badge">Q8</span>なぜメール端末なのか。他の端末ではだめか？</div>
+    <div class="a"><span class="badge">A</span>現場で使えてブラウザが利用できる端末として想定しています。どの端末を使うか（親機の指定を含む）は、情報部とご相談のうえ決定したいと考えています。</div>
+  </div>
+
+  <h2><span class="n">4</span>承認プロセス・位置づけ</h2>
+
+  <div class="qa">
+    <div class="q"><span class="badge">Q9</span>独自ツールの業務利用は原則不可では？</div>
+    <div class="a"><span class="badge">A</span>承知しております。まずは<strong>技術的にリスクが最も小さい形</strong>（オフライン・通信なし・単一ファイル・マクロなし）を確定したうえで、<strong>医療情報管理運営委員会</strong>にお諮りいただくことを前提としています。正式システムが調達されるまでの暫定運用という位置づけです。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="badge">Q10</span>委員会には何を提出するのか？</div>
+    <div class="a"><span class="badge">A</span><strong>改修要件定義書・セキュリティ設計書・本ツールのソース</strong>を提出します。責任体制（管理主体・責任者）と運用規程もあわせて整備します。</div>
+  </div>
+
+  <div class="note warn">
+    <div class="lbl">正直にお伝えすべき点（先に述べておくと信頼されます）</div>
+    オフライン単体では<strong>「リアルタイムの多人数同時共有」はできません</strong>。この制約を隠さず、「当面は親機1台＋印刷共有で運用し、本格的な共有は正式システムで」と明確にすることが、委員会・情報部の理解を得る近道です。
+  </div>
+
+  <footer>Lu-177治療スケジューラ オフライン運用 想定問答集（RI室 内部資料）／院内配布・印刷・PDF保存が可能です。</footer>
+
+</div>
+</body>
+</html>
