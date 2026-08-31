@@ -177,14 +177,14 @@
       <li><a href="#about">このアプリでできること</a></li>
       <li><a href="#start">アプリを起動する</a></li>
       <li><a href="#setup">初回セットアップ（管理者）</a></li>
-      <li><a href="#unlock">ロックを解除する（毎回）</a></li>
+      <li><a href="#unlock">ログインする（毎回）</a></li>
       <li><a href="#add">患者を登録する</a></li>
       <li><a href="#view">スケジュールの見方</a></li>
       <li><a href="#adjust">治療日を調整する</a></li>
       <li><a href="#rules">自動でかかるルール</a></li>
       <li><a href="#print">印刷する</a></li>
       <li><a href="#calendar">カレンダーと稼働状況</a></li>
-      <li><a href="#password">パスワードを変更する</a></li>
+      <li><a href="#password">利用者とパスワードの管理</a></li>
       <li><a href="#audit">操作履歴（監査ログ）</a></li>
       <li><a href="#share">データ共有と注意点</a></li>
       <li><a href="#trouble">困ったとき（Q&amp;A）</a></li>
@@ -200,13 +200,13 @@
         <div class="card"><h4>患者管理</h4><p>患者ごとに全サイクルの日程を自動計算・一覧表示。</p></div>
         <div class="card"><h4>治療日の調整</h4><p>ボタンや手動編集で日程変更。重複や締切超過は自動で防止。</p></div>
         <div class="card"><h4>カレンダー・帳票</h4><p>病室占有カレンダー、月次帳票、患者用予定表を印刷。</p></div>
-        <div class="card"><h4>暗号化・共有</h4><p>データはパスワードで暗号化。共有フォルダで全員が同じ予定を閲覧。</p></div>
+        <div class="card"><h4>暗号化・共有</h4><p>データは暗号化。利用者ごとのアカウントで、同じ予定を全員が共有。</p></div>
       </div>
       <div class="note tip">
         <div class="lbl">はじめに覚える3つ</div>
         <ul class="bul" style="margin-bottom:0">
-          <li><strong>解除パスワード</strong>＝毎回アプリを開くときに全員が使う共通パスワード。</li>
-          <li><strong>管理者パスワード</strong>＝解除パスワードを変更するときだけ必要（管理者のみ）。</li>
+          <li><strong>個人アカウント</strong>＝利用者ごとに<strong>自分の利用者名とパスワード</strong>でログインします（共通パスワードはありません）。</li>
+          <li><strong>役割</strong>＝<strong>管理者</strong>は利用者の追加・削除ができます。<strong>一般</strong>は通常の予定管理を行います。</li>
           <li><strong>保存先</strong>＝患者データの置き場所。院内共有フォルダにすると全員で共有できます。</li>
         </ul>
       </div>
@@ -216,11 +216,11 @@
       <h2 class="sec"><span class="num">2</span>アプリを起動する</h2>
       <ol class="steps">
         <li>デスクトップまたはスタートメニューの <strong>「Lu-177治療患者スケジューラ」</strong> をダブルクリックします。</li>
-        <li>初めて開いたときは<strong>パスワード設定</strong>画面、2回目以降は<strong>ロック解除</strong>画面が表示されます。</li>
+        <li>初めて開いたときは<strong>初回セットアップ</strong>画面、2回目以降は<strong>ログイン</strong>画面が表示されます。</li>
       </ol>
       <div class="note">
         <div class="lbl">画面はこれだけ</div>
-        <p>このアプリは<strong>患者管理</strong>の一画面に絞っています。上部のボタンは <span class="btn">操作履歴</span> <span class="btn amber">保存先</span> <span class="btn">パスワード変更</span> <span class="btn">ロック</span> の4つです。</p>
+        <p>このアプリは<strong>患者管理</strong>の一画面に絞っています。上部のボタンは <span class="btn">操作履歴</span> <span class="btn amber">保存先</span> <span class="btn">利用者/パスワード</span> <span class="btn">ロック</span> の4つです。画面上部には<strong>ログイン中の利用者名</strong>が表示されます。</p>
       </div>
     </section>
 
@@ -228,14 +228,14 @@
       <h2 class="sec"><span class="num">3</span>初回セットアップ（管理者が行います）</h2>
       <p>導入したPCで最初に一度だけ行う設定です。<strong>管理者が実施してください。</strong></p>
 
-      <h3>① 解除パスワードを設定</h3>
+      <h3>① 最初の管理者アカウントを作成</h3>
       <ol class="steps">
-        <li>初回起動で「初回セットアップ」画面が出たら、<strong>8文字以上</strong>のパスワードを2回入力して設定します。</li>
-        <li>これが以後、全員がアプリを開くときに使う<strong>共通の解除パスワード</strong>になります。</li>
+        <li>初回起動で「初回セットアップ」画面が出たら、<strong>利用者名（あなたの氏名・ID）</strong>と<strong>パスワード（8文字以上）</strong>を入力し、確認欄にもう一度パスワードを入力します。</li>
+        <li>「管理者を作成して開始」をクリックすると、あなたが<strong>最初の管理者</strong>として登録され、アプリが開きます。</li>
       </ol>
       <div class="note crit">
         <div class="lbl">重要：パスワードを忘れると復元できません</div>
-        <p>データは解除パスワードで暗号化されています。忘れると患者データを開けなくなります。<strong>安全な場所に必ず記録</strong>してください。</p>
+        <p>データは暗号化されています。<strong>管理者が1人もいなくなると患者データを開けなくなります。</strong>パスワードは安全な場所に必ず記録し、管理者は<strong>2名以上</strong>作ることを推奨します。</p>
       </div>
 
       <h3>② 保存先（共有フォルダ）を設定</h3>
@@ -247,26 +247,25 @@
       </ol>
       <div class="note tip"><p><strong>2台目以降のPC</strong>も、同じ手順で<strong>同じ共有フォルダ</strong>を指定してください。全員が同じ患者スケジュールを見られます。</p></div>
 
-      <h3>③ 管理者パスワードを設定</h3>
-      <p>解除パスワードは全員が知っているため、そのままでは誰でも変更できてしまいます。<strong>変更を管理者だけに限定</strong>するため、別の管理者パスワードを設定します。</p>
+      <h3>③ 利用者（メンバー）を追加</h3>
+      <p>WGメンバーそれぞれに<strong>個人アカウント</strong>を作ります（管理者が行います）。</p>
       <ol class="steps">
-        <li>上部の <span class="btn">パスワード変更</span> をクリック。</li>
-        <li>初回は「管理者パスワードの設定」画面になります。<strong>6文字以上</strong>で設定します。</li>
-        <li>以降、解除パスワードの変更にはこの管理者パスワードが必要になります。</li>
+        <li>上部の <span class="btn">利用者/パスワード</span> をクリック。</li>
+        <li>「利用者を追加」で<strong>利用者名・初期パスワード（8文字以上）・役割（管理者/一般）</strong>を入力し「追加する」。</li>
+        <li>追加した本人に初期パスワードを伝え、<strong>初回ログイン後にご自身で変更</strong>してもらいます。</li>
       </ol>
-      <div class="note warn"><p><strong>導入直後にすぐ設定してください。</strong> 設定するまでは誰でも最初の管理者パスワードを決められてしまいます。</p></div>
+      <div class="note tip"><p>すでに旧バージョン（共通パスワード）で使っていたデータがある場合は、起動時に<strong>「個人アカウントへの移行」画面</strong>が表示されます。現在の共通パスワードと、新しい管理者名・パスワードを入力すると、<strong>データはそのままで</strong>個人アカウントに移行できます。</p></div>
     </section>
 
     <section id="unlock">
-      <h2 class="sec"><span class="num">4</span>ロックを解除する（毎回）</h2>
+      <h2 class="sec"><span class="num">4</span>ログインする（毎回）</h2>
       <ol class="steps">
-        <li>アプリを開くと「Lu-177治療患者スケジューラ」のロック画面が出ます。</li>
-        <li><strong>利用者名（氏名）</strong>を入力します。<strong>ご自身の名前</strong>を入れてください。</li>
-        <li><strong>解除パスワード</strong>（共通）を入力して「解錠」をクリック。</li>
-        <li>患者管理画面が表示されます。</li>
+        <li>アプリを開くと「Lu-177治療患者スケジューラ」のログイン画面が出ます。</li>
+        <li><strong>利用者名</strong>と<strong>自分のパスワード</strong>を入力して「ログイン」をクリック。</li>
+        <li>患者管理画面が表示され、上部に<strong>「ログイン中：あなたの名前」</strong>が表示されます。</li>
       </ol>
-      <div class="note tip"><p>入力した<strong>氏名は操作履歴に記録</strong>されます（誰がいつ操作したかの記録）。共有で使う場合も、必ず<strong>操作する本人の名前</strong>を入れてください（→ <a href="#audit">操作履歴（監査ログ）</a>）。</p></div>
-      <p>作業を終えたら、上部の <span class="btn">ロック</span> を押すと再びパスワードが必要になります。離席時はロックを推奨します。</p>
+      <div class="note tip"><p><strong>利用者名は前回の入力を記憶</strong>しているので、2回目以降はパスワードを入れるだけです。ログインした<strong>利用者名は操作履歴に自動で記録</strong>されます（手入力は不要／→ <a href="#audit">操作履歴（監査ログ）</a>）。</p></div>
+      <p>作業を終えたら、上部の <span class="btn">ロック</span> を押すと再びログインが必要になります。離席時はロックを推奨します。</p>
     </section>
 
     <section id="add">
@@ -382,22 +381,26 @@
     </section>
 
     <section id="password">
-      <h2 class="sec"><span class="num">11</span>パスワードを変更する（管理者のみ）</h2>
-      <h3>解除パスワード（共通）の変更</h3>
+      <h2 class="sec"><span class="num">11</span>利用者とパスワードの管理</h2>
+      <p>上部の <span class="btn">利用者/パスワード</span> から操作します。</p>
+      <h3>自分のパスワードを変更する（全員）</h3>
       <ol class="steps">
-        <li>上部の <span class="btn">パスワード変更</span> をクリック。</li>
-        <li><strong>管理者パスワード</strong>を入力。</li>
-        <li>新しい解除パスワード（8文字以上）を2回入力して「変更する」。</li>
+        <li>上部の <span class="btn">利用者/パスワード</span> をクリック。</li>
+        <li>「自分のパスワードを変更」で、<strong>現在のパスワード</strong>と<strong>新しいパスワード（8文字以上）</strong>を2回入力して「変更する」。</li>
       </ol>
-      <div class="note"><p>管理者パスワードが正しくなければ変更できません。これにより、一般スタッフは解除できても<strong>共通パスワードを勝手に変えられません</strong>。</p></div>
-      <h3>管理者パスワード自体の変更</h3>
-      <p>同じ画面の下部「<strong>管理者パスワードを変更する</strong>」から、現在の管理者パスワードを入力して変更できます。</p>
-      <div class="note crit"><p>新しいパスワードは<strong>必ず記録</strong>してください。忘れると管理者操作（解除パスワードの変更）ができなくなります。</p></div>
+      <div class="note tip"><p>初めて渡された<strong>初期パスワードは、初回ログイン後に必ずご自身のパスワードへ変更</strong>してください。</p></div>
+      <h3>利用者を追加・削除する（管理者のみ）</h3>
+      <ol class="steps">
+        <li>同じ画面の「利用者の管理」で、一覧の確認・追加・削除ができます。</li>
+        <li><strong>追加：</strong>利用者名・初期パスワード・役割（管理者/一般）を入力して「追加する」。</li>
+        <li><strong>削除：</strong>一覧の各利用者のゴミ箱アイコンから削除します。</li>
+      </ol>
+      <div class="note warn"><p><strong>最後の管理者は削除できません。</strong>管理者が不在にならないよう、管理者は2名以上を推奨します。各利用者の<strong>パスワードは本人だけが知る</strong>もので、管理者でも他人のパスワードは見られません（忘れた場合は削除して作り直します）。</p></div>
     </section>
 
     <section id="audit">
       <h2 class="sec"><span class="num">12</span>操作履歴（監査ログ）</h2>
-      <p class="lead">「誰が・いつ・何をしたか」を<strong>自動で記録</strong>します。ロック解除のときに入力した<strong>氏名</strong>とともに、患者の追加・削除や治療日の変更などが残ります。記録は<strong>あとから書き換え・削除ができません</strong>（追記のみ）。</p>
+      <p class="lead">「誰が・いつ・何をしたか」を<strong>自動で記録</strong>します。<strong>ログイン中の利用者名</strong>とともに、患者の追加・削除や治療日の変更などが残ります。記録は<strong>あとから書き換え・削除ができません</strong>（追記のみ）。</p>
 
       <h3>履歴を見る</h3>
       <ol class="steps">
@@ -411,10 +414,11 @@
         <table>
           <thead><tr><th>操作</th><th>記録される内容</th></tr></thead>
           <tbody>
-            <tr><td>ロック解除／ロック</td><td>いつ・誰がアプリを開いた／閉じたか。</td></tr>
+            <tr><td>ログイン／ロック</td><td>いつ・誰がログインした／ロックしたか。</td></tr>
             <tr><td>患者追加／患者削除</td><td>患者名・治療種別・サイクル数など。</td></tr>
             <tr><td>サイクル変更</td><td>どの患者の第何サイクルを、どの治療日・状態に変えたか。</td></tr>
-            <tr><td>パスワード設定・変更</td><td>管理者パスワード・解除パスワードの設定／変更。</td></tr>
+            <tr><td>利用者 追加／削除</td><td>管理者による利用者アカウントの追加・削除。</td></tr>
+            <tr><td>パスワード変更</td><td>利用者による自分のパスワードの変更。</td></tr>
           </tbody>
         </table>
       </div>
@@ -427,7 +431,7 @@
       </ol>
       <div class="note ok">
         <div class="lbl">この機能のねらい</div>
-        <p>操作履歴は、医療情報部から求められた<strong>「責任の所在の明確化」</strong>と<strong>「透明性」</strong>に対応する機能です。誰の操作かを氏名で残し、改ざんできない形で保存します。<strong>だからこそ、ロック解除時の氏名は正確に入力</strong>してください。</p>
+        <p>操作履歴は、医療情報部から求められた<strong>「責任の所在の明確化」</strong>と<strong>「透明性」</strong>に対応する機能です。個人アカウントのログイン利用者名を自動で残し、改ざんできない形で保存します。<strong>共通パスワードや氏名の手入力は廃止</strong>され、誰の操作かが確実に記録されます。</p>
       </div>
     </section>
 
@@ -439,7 +443,7 @@
         <p>複数の人が<strong>同時刻に登録・変更</strong>すると、データが壊れる恐れがあります。編集は<strong>1人ずつ</strong>行ってください（閲覧は同時でも問題ありません）。</p>
       </div>
       <ul class="bul">
-        <li><strong>解除パスワードは全員共通</strong>です（同じ暗号化データを開くため）。</li>
+        <li><strong>利用者ごとに自分のアカウント</strong>でログインします（共通パスワードはありません）。同じ暗号化データを、各自のパスワードで開きます。</li>
         <li><strong>共有フォルダは定期的にバックアップ</strong>してください。</li>
         <li>患者データを共有フォルダに保存するため、<strong>院内のセキュリティ規定</strong>を必ず確認してください。</li>
         <li>離席時は <span class="btn">ロック</span> を。</li>
@@ -457,15 +461,17 @@
 
       <details class="faq"><summary>別のPCで入れたはずのデータが表示されない</summary><div class="a">両方のPCで <span class="btn amber">保存先</span> が<strong>同じ共有フォルダ</strong>に設定されているか確認してください。異なると別々のデータになります。</div></details>
 
-      <details class="faq"><summary>パスワード変更を押しても変えられない</summary><div class="a">解除パスワードの変更には<strong>管理者パスワード</strong>が必要です。管理者にご相談ください。</div></details>
+      <details class="faq"><summary>自分のパスワードを変えたい／忘れた</summary><div class="a">変更は <span class="btn">利用者/パスワード</span> の「自分のパスワードを変更」から行えます。忘れた場合は、管理者にそのアカウントを削除・作り直してもらってください（他人のパスワードは管理者でも見られません）。</div></details>
 
-      <details class="faq"><summary>解除パスワードを忘れた</summary><div class="a">暗号化のため、パスワードなしでデータを復元することはできません。バックアップの有無を含め、管理者にご確認ください。</div></details>
+      <details class="faq"><summary>利用者を追加・削除したい</summary><div class="a">管理者のみ可能です。<span class="btn">利用者/パスワード</span> の「利用者の管理」から追加・削除します。最後の管理者は削除できません。</div></details>
+
+      <details class="faq"><summary>全員がログインできなくなった（管理者もいない）</summary><div class="a">暗号化のため、どの利用者のパスワードでもデータを開けなくなると復元できません。管理者は必ず2名以上とし、バックアップを定期取得してください。</div></details>
 
       <details class="faq"><summary>既に重複・過去日で登録された古いデータがある</summary><div class="a">自動修正はされません。延期ボタンや編集で調整するか、削除して登録し直してください（新規登録すれば正しく配置されます）。</div></details>
 
-      <details class="faq"><summary>誰がいつ変更したのか確認したい</summary><div class="a">上部の <span class="btn">操作履歴</span> を開くと、氏名・日時つきの記録を新しい順に確認できます。全件は「CSVで保存」で書き出せます（→ <a href="#audit">操作履歴（監査ログ）</a>）。</div></details>
+      <details class="faq"><summary>誰がいつ変更したのか確認したい</summary><div class="a">上部の <span class="btn">操作履歴</span> を開くと、利用者名・日時つきの記録を新しい順に確認できます。全件は「CSVで保存」で書き出せます（→ <a href="#audit">操作履歴（監査ログ）</a>）。</div></details>
 
-      <details class="faq"><summary>ロック解除のときに名前を入れる欄が増えた</summary><div class="a">操作履歴に「誰が操作したか」を残すためです。<strong>操作するご本人の氏名</strong>を入力してください。空欄では解錠できません。</div></details>
+      <details class="faq"><summary>以前の共通パスワードで使っていたデータを移したい</summary><div class="a">新バージョンを最初に起動すると<strong>「個人アカウントへの移行」画面</strong>が出ます。現在の共通パスワードと、新しい管理者名・パスワードを入力すると、データはそのままで個人アカウントに移行できます。</div></details>
     </section>
 
   </main>
