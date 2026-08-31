@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LocalAuth from './components/LocalAuth';
 import PatientManager from './components/PatientManager';
@@ -14,6 +15,17 @@ function AppContent() {
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showDataLocation, setShowDataLocation] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
+  const [me, setMe] = useState<{ username: string; role: string } | null>(null);
+
+  useEffect(() => {
+    if (!unlocked) {
+      setMe(null);
+      return;
+    }
+    invoke<{ username: string; role: string }>('whoami')
+      .then(setMe)
+      .catch(() => setMe(null));
+  }, [unlocked]);
 
   if (!unlocked) {
     return <LocalAuth onUnlocked={unlock} />;
@@ -23,7 +35,17 @@ function AppContent() {
     <div className="min-h-screen bg-gray-50 px-4 py-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">患者管理</h1>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">患者管理</h1>
+            {me && (
+              <p className="text-sm text-gray-500 mt-1">
+                ログイン中：<span className="font-medium text-gray-700">{me.username}</span>
+                <span className="ml-2 text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                  {me.role === 'admin' ? '管理者' : '一般'}
+                </span>
+              </p>
+            )}
+          </div>
           <NavigationBar
             onSignOut={lock}
             onChangePassword={() => setShowChangePassword(true)}

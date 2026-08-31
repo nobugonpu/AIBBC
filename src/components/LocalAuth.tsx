@@ -25,6 +25,12 @@ export default function LocalAuth({ onUnlocked }: Props) {
       try {
         const setup = await invoke<boolean>('is_setup');
         if (setup) {
+          try {
+            const last = localStorage.getItem('lastUsername');
+            if (last) setUsername(last);
+          } catch {
+            /* localStorage unavailable — ignore */
+          }
           setMode('login');
         } else {
           const migrate = await invoke<boolean>('needs_migration');
@@ -61,6 +67,11 @@ export default function LocalAuth({ onUnlocked }: Props) {
       const u = username.trim();
       if (mode === 'login') {
         await invoke('login', { username: u, password });
+        try {
+          localStorage.setItem('lastUsername', u);
+        } catch {
+          /* localStorage unavailable — ignore */
+        }
       } else if (mode === 'setup') {
         await invoke('setup_first_user', { username: u, password });
       } else {
@@ -170,7 +181,7 @@ export default function LocalAuth({ onUnlocked }: Props) {
                   value={username}
                   onChange={e => setUsername(e.target.value)}
                   required
-                  autoFocus={mode !== 'migrate'}
+                  autoFocus={mode !== 'migrate' && !username}
                   className="w-full pl-9 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="例：山田 太郎"
                 />
@@ -188,6 +199,7 @@ export default function LocalAuth({ onUnlocked }: Props) {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
+                  autoFocus={mode === 'login' && !!username}
                   className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="••••••••"
                 />
