@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lu-177治療スケジューラ 改修要件定義書</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+  :root{--bg:#f5f8fc;--surface:#fff;--surface-2:#eef3f9;--ink:#16202e;--soft:#55647c;--faint:#8a99b0;
+    --border:#e2e9f1;--blue:#1f5fbf;--blue-bg:#eef4ff;--green:#0f9d6e;--green-bg:#eafaf3;--green-ink:#0a6b4b;
+    --amber:#b45309;--amber-bg:#fff7ea;--amber-line:#f0c680;--red:#c02626;--red-bg:#fdf0f0;--shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);}
+  @media(prefers-color-scheme:dark){:root{--bg:#0d1420;--surface:#151d2b;--surface-2:#1c2637;--ink:#e7edf6;
+    --soft:#a7b4c9;--faint:#6c7b93;--border:#263143;--blue:#6b9bff;--blue-bg:#16233c;--green:#35d39c;
+    --green-bg:#10281f;--green-ink:#86efc5;--amber:#f6be5f;--amber-bg:#2a2012;--amber-line:#5a4520;--red:#f78a8a;--red-bg:#2a1618;}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;font-size:14.5px;line-height:1.7}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px 64px}
+  header.mast{padding:34px 0 16px;border-bottom:3px solid var(--blue);margin-bottom:10px}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.09em;color:var(--blue);background:var(--blue-bg);padding:4px 12px;border-radius:999px;display:inline-block}
+  header.mast h1{font-size:clamp(21px,3vw,28px);font-weight:700;margin:12px 0 4px}
+  .docinfo{margin:10px 0;font-size:13px;color:var(--soft)}
+  h2{font-size:18px;font-weight:700;margin:26px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center}
+  h2 .n{font-size:12px;color:#fff;background:var(--blue);min-width:24px;height:24px;border-radius:6px;display:inline-grid;place-items:center;font-weight:700}
+  h3{font-size:15px;font-weight:700;margin:16px 0 5px}
+  p{margin:8px 0} ul,ol{margin:8px 0;padding-left:22px} li{margin:4px 0}
+  .twrap{overflow-x:auto;margin:11px 0;border:1px solid var(--border);border-radius:10px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--border);vertical-align:top}
+  thead th{background:var(--surface-2);color:var(--soft);font-weight:700;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  .k{color:var(--green-ink);font-weight:700}
+  .must{color:var(--red);font-weight:700}
+  .note{border-radius:10px;padding:11px 15px;margin:12px 0;border:1px solid var(--border);font-size:13.5px}
+  .note.tip{background:var(--blue-bg);border-color:color-mix(in srgb,var(--blue) 30%,transparent)}
+  .note.warn{background:var(--amber-bg);border-color:var(--amber-line);color:var(--amber)}
+  .note .lbl{font-weight:700;margin-bottom:2px}
+  .sig{margin-top:14px;color:var(--soft);font-size:13px}
+  .approve{margin-top:16px;border:1px solid var(--border);border-radius:10px}
+  .approve table{font-size:12.5px}
+  .approve td{height:44px}
+  footer{margin-top:30px;padding-top:14px;border-top:1px solid var(--border);color:var(--faint);font-size:12px;text-align:center}
+  code{font-family:Consolas,monospace;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:.9em}
+  @media print{body{background:#fff;color:#000;font-size:10pt}.wrap{max-width:none;padding:0}.note,.twrap,.approve{page-break-inside:avoid}h2{page-break-after:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <span class="eyebrow">医療情報管理運営委員会 提出用</span>
+    <h1>Lu-177治療患者スケジューラ 改修要件定義書</h1>
+    <div class="docinfo">
+      文書番号：〔　　　〕／版：0.1（案）／作成日：〔　年　月　日〕<br>
+      提出先：医療情報管理運営委員会　御中／申請部署：RI室（核医学）／作成：新留 信幸／責任者：〔氏名〕・副責任者：〔氏名〕
+    </div>
+  </header>
+
+  <div class="note tip">
+    <div class="lbl">本書の目的</div>
+    現行の「Lu-177治療患者スケジューラ」を、医療情報部のご指摘（共通パスワード・利用者名手入力・可用性/保守性 等）を踏まえて<strong>設計から見直し・改修</strong>するにあたり、その<strong>改修要件</strong>を定義し、委員会でのご審議・ご承認をお願いするものです。承認後、現場検証を経て暫定運用へ移行する前提です。
+  </div>
+
+  <h2><span class="n">1</span>背景と経緯</h2>
+  <ul>
+    <li><strong>目的：</strong>ルタテラ・プルヴィクト（Lu-177）治療の予約は、治療間隔・病室重複・祝日週・薬剤発注締切など制約が多く、手作業では見落としが生じやすい。予約ミスは治療遅延・薬剤ロスに直結するため、<strong>ヒューマンエラー低減＝患者安全の向上</strong>を目的とする。</li>
+    <li><strong>医療情報部からのご指摘：</strong>①共通パスワードは不可 ②利用者名の手入力は不可 ③独自ツールは原則不可であり、可用性・保守性・他システムへの影響・セキュリティを考慮のうえ、設計見直し・委員会承認・現場検証が必要。</li>
+    <li><strong>代替手段の検討結果：</strong>暫定策としてExcel版・Access版を試作したが、スケジューリング判定が複雑で関数・クエリだけでは安定自動化できず、手作業補正が多く実運用に耐えないと判断。ポータル共有フォルダへの設置は断念。</li>
+    <li><strong>方針転換：</strong>セキュリティリスクを最小化するため、<strong>ネットワーク非接続のオフライン単一ファイル（HTML）</strong>を、指定端末（JCHOメール端末等）のブラウザで動作させる形態を採用する。</li>
+  </ul>
+
+  <h2><span class="n">2</span>対象システムと運用形態</h2>
+  <div class="twrap"><table>
+    <tbody>
+      <tr><th>対象</th><td>Lu-177治療患者スケジューラ（治療予定の作成・管理・印刷）</td></tr>
+      <tr><th>形態</th><td>ネットワーク非接続の<strong>オフライン単一ファイル（HTML）</strong>。指定端末のブラウザで開いて動作。インストール不要。</td></tr>
+      <tr><th>通信</th><td><span class="k">外部・院内網ともに一切通信しない</span>（完全オフライン）。</td></tr>
+      <tr><th>データ共有</th><td>当面は<strong>「親機1台方式」</strong>（入力・保存は指定1台のみ、他メンバーは印刷物で共有）。同時共有は正式システム調達までの将来課題。</td></tr>
+      <tr><th>データ保存</th><td>指定端末内に暗号化して保存。定期的に書き出しファイルでバックアップ。</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2><span class="n">3</span>機能要件（改修項目）</h2>
+  <div class="twrap"><table>
+    <thead><tr><th>#</th><th>項目</th><th>現状</th><th>改修後（要件）</th><th>区分</th></tr></thead>
+    <tbody>
+      <tr><td>F1</td><td>個人認証</td><td>全員共通の1パスワード</td><td><strong>利用者ごとの個人アカウント（ID＋各自パスワード）</strong>で認証。共通パスワードを廃止。</td><td class="must">必須</td></tr>
+      <tr><td>F2</td><td>利用者の記録</td><td>氏名を手入力</td><td>手入力を廃止し、<strong>ログイン中の利用者を自動で記録</strong>。</td><td class="must">必須</td></tr>
+      <tr><td>F3</td><td>権限管理</td><td>管理者PWで一部制限</td><td><strong>役割（管理者／一般）</strong>を導入し、機能ごとに権限制御。</td><td>必須</td></tr>
+      <tr><td>F4</td><td>パスワード運用</td><td>桁数チェックのみ</td><td>有効桁数・<strong>連続失敗時ロック</strong>・変更手順を規定。</td><td>推奨</td></tr>
+      <tr><td>F5</td><td>操作履歴（監査ログ）</td><td>実装済（氏名手入力基準）</td><td>個人アカウントに紐付けて<strong>改ざん不可（追記のみ）</strong>で記録。CSV出力。</td><td>必須</td></tr>
+      <tr><td>F6</td><td>スケジューリング</td><td>実装済</td><td>治療間隔厳守・重複回避・祝日週除外・発注締切判定・全サイクル登録・延期調整を維持。</td><td>維持</td></tr>
+      <tr><td>F7</td><td>データ入出力</td><td>DB保存</td><td>暗号化した<strong>書き出し／読み込み（バックアップ・受け渡し）</strong>に対応。</td><td>推奨</td></tr>
+      <tr><td>F8</td><td>印刷</td><td>実装済</td><td>患者用予定表・スタッフ用一覧の印刷を維持。</td><td>維持</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note tip">
+    <div class="lbl">認証と暗号化の両立（F1の技術方針）</div>
+    データ本体は1本の鍵で暗号化し、その鍵を<strong>利用者ごとに各自のパスワードで包んで保管（エンベロープ暗号化）</strong>する。これにより共通パスワードを廃止しつつ、同一データを複数利用者が各自の認証で開ける。利用者の追加・削除は「包み」の追加・削除で行う。
+  </div>
+
+  <h2><span class="n">4</span>非機能要件</h2>
+  <div class="twrap"><table>
+    <thead><tr><th>観点</th><th>要件</th></tr></thead>
+    <tbody>
+      <tr><td>セキュリティ</td><td>院外・院内網へ<strong>通信しない</strong>／保存データは<strong>AES-256で暗号化</strong>／患者情報は<strong>患者ID中心</strong>（氏名保有を最小化）／ソースはレビュー可能。</td></tr>
+      <tr><td>可用性</td><td>単一ファイルで起動が単純。定期バックアップ（書き出しファイル）で消失に備える。</td></tr>
+      <tr><td>保守性</td><td><strong>単一ファイルの差し替えで更新</strong>。手順書・ソース公開・二名体制で属人化を排除。</td></tr>
+      <tr><td>他システムへの影響</td><td>スタンドアロン・通信なしのため<strong>他システムへ影響を与えない</strong>。</td></tr>
+      <tr><td>性能</td><td>数十名規模の予定管理を想定。端末内処理で十分な応答性。</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2><span class="n">5</span>取り扱うデータ項目</h2>
+  <p>患者ID・治療種別（薬剤）・治療日/入院日/退院日・サイクル番号・ステータス・発注締切・メモ。<strong>患者氏名は任意</strong>とし、原則は患者IDで管理（個人情報の保有を最小化）。</p>
+
+  <h2><span class="n">6</span>スコープ外（将来課題）</h2>
+  <ul>
+    <li>複数端末での<strong>リアルタイム同時共有</strong>（＝情報部管理サーバー／正式システムの領域）。</li>
+    <li>院内認証基盤（Active Directory 等）との<strong>連携（SSO）</strong>。</li>
+    <li>他部門システムとの<strong>データ連携</strong>。</li>
+  </ul>
+
+  <h2><span class="n">7</span>体制・責任</h2>
+  <ul>
+    <li><strong>管理主体：</strong>RI室（核医学）。<strong>責任者〔氏名〕・副責任者〔氏名〕</strong>の二名体制。</li>
+    <li><strong>資産の帰属：</strong>ソース一式を院の資産として管理（特定個人の所有物にしない）。</li>
+    <li><strong>運用規程：</strong>利用者・利用目的・データ取扱い・バックアップ・保守手順を規程化し、情報部の管理下に置く。</li>
+  </ul>
+
+  <h2><span class="n">8</span>導入・検証ステップ</h2>
+  <ol>
+    <li><strong>本要件定義の承認</strong>（委員会）。</li>
+    <li>設計・改修（F1〜F5 を中心に実装）。<strong>セキュリティ設計書</strong>を作成。</li>
+    <li>情報部による<strong>ソースレビュー・セキュリティ確認</strong>、運用端末・保存場所の決定。</li>
+    <li><strong>現場検証</strong>（少人数・親機1台方式）→ 問題なければ暫定運用へ。</li>
+  </ol>
+
+  <h2><span class="n">9</span>リスクと対策</h2>
+  <div class="twrap"><table>
+    <thead><tr><th>リスク</th><th>影響</th><th>対策</th></tr></thead>
+    <tbody>
+      <tr><td>患者情報の漏洩</td><td>大</td><td>通信なし＋暗号化＋患者ID中心＋保存場所を情報部管理下に</td></tr>
+      <tr><td>データ消失（端末故障等）</td><td>中</td><td>定期バックアップ（書き出しファイル）</td></tr>
+      <tr><td>担当者不在による停止</td><td>中</td><td>単一ファイル＋手順書＋二名体制</td></tr>
+      <tr><td>不正操作・変更</td><td>中</td><td>個人認証＋改ざん不可の操作履歴（F1・F5）</td></tr>
+      <tr><td>同時編集による不整合</td><td>中</td><td>親機1台方式（入力を1台に限定）</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="sig">申請部署：RI室（核医学）／責任者：〔氏名〕・副責任者：〔氏名〕／連絡先：〔内線・メール〕</p>
+
+  <div class="approve">
+    <div class="twrap"><table>
+      <thead><tr><th>承認欄</th><th>委員長</th><th>医療情報部</th><th>申請責任者</th></tr></thead>
+      <tbody><tr><td>署名／日付</td><td></td><td></td><td></td></tr></tbody>
+    </table></div>
+  </div>
+
+  <footer>Lu-177治療患者スケジューラ 改修要件定義書（医療情報管理運営委員会 提出用）／院内配布・印刷・PDF保存が可能です。</footer>
+
+</div>
+</body>
+</html>
