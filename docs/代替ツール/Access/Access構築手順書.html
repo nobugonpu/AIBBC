@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lu-177 治療スケジュール Access版 構築手順書</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+  :root{--bg:#f5f8fc;--surface:#fff;--surface-2:#eef3f9;--ink:#16202e;--soft:#55647c;--faint:#8a99b0;
+    --border:#e2e9f1;--blue:#1f5fbf;--blue-bg:#eef4ff;--green:#0f9d6e;--green-bg:#eafaf3;--green-ink:#0a6b4b;
+    --amber:#b45309;--amber-bg:#fff7ea;--amber-line:#f0c680;--red:#c02626;--red-bg:#fdf0f0;--red-line:#f2b6b6;
+    --code-bg:#0f1b2d;--code-ink:#e6edf6;--shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);}
+  @media(prefers-color-scheme:dark){:root{--bg:#0d1420;--surface:#151d2b;--surface-2:#1c2637;--ink:#e7edf6;
+    --soft:#a7b4c9;--faint:#6c7b93;--border:#263143;--blue:#6b9bff;--blue-bg:#16233c;--green:#35d39c;
+    --green-bg:#10281f;--green-ink:#86efc5;--amber:#f6be5f;--amber-bg:#2a2012;--amber-line:#5a4520;
+    --red:#f78a8a;--red-bg:#2a1618;--red-line:#59292b;--code-bg:#0b1220;--code-ink:#dbe6f5;}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;font-size:15px;line-height:1.75}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px 64px}
+  header.mast{padding:34px 0 18px;border-bottom:3px solid var(--blue);margin-bottom:12px}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.09em;color:var(--blue);background:var(--blue-bg);padding:4px 12px;border-radius:999px;display:inline-block}
+  header.mast h1{font-size:clamp(22px,3.2vw,29px);font-weight:700;margin:12px 0 4px}
+  header.mast .meta{color:var(--soft);font-size:14px}
+  h2{font-size:19px;font-weight:700;margin:30px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center}
+  h2 .n{font-size:13px;color:#fff;background:var(--blue);min-width:26px;height:26px;border-radius:7px;display:inline-grid;place-items:center;font-weight:700}
+  h3{font-size:15.5px;font-weight:700;margin:18px 0 6px}
+  p{margin:9px 0} ul,ol{margin:9px 0;padding-left:22px} li{margin:5px 0}
+  strong{font-weight:700}
+  code{font-family:Consolas,monospace;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:.9em}
+  pre{background:var(--code-bg);color:var(--code-ink);border-radius:10px;padding:14px 16px;overflow-x:auto;font-family:Consolas,monospace;font-size:13px;line-height:1.6}
+  pre .cap{display:block;color:#7fa7e0;font-size:11.5px;margin-bottom:6px;font-family:"Noto Sans JP",sans-serif}
+  .note{border-radius:10px;padding:12px 16px;margin:14px 0;border:1px solid var(--border);background:var(--surface);font-size:14px}
+  .note .lbl{font-weight:700;margin-bottom:3px}
+  .note.tip{background:var(--blue-bg);border-color:color-mix(in srgb,var(--blue) 30%,transparent)}
+  .note.warn{background:var(--amber-bg);border-color:var(--amber-line);color:var(--amber)}
+  .note.ok{background:var(--green-bg);border-color:color-mix(in srgb,var(--green) 30%,transparent);color:var(--green-ink)}
+  .twrap{overflow-x:auto;margin:12px 0;border:1px solid var(--border);border-radius:10px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--border);vertical-align:top}
+  thead th{background:var(--surface-2);color:var(--soft);font-weight:700;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  ol.steps{counter-reset:s;list-style:none;padding-left:0}
+  ol.steps>li{counter-increment:s;position:relative;padding:2px 0 10px 40px;margin:0}
+  ol.steps>li::before{content:counter(s);position:absolute;left:0;top:0;width:26px;height:26px;background:var(--surface);border:2px solid var(--blue);color:var(--blue);font-weight:700;border-radius:50%;display:grid;place-items:center;font-size:13px}
+  footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--border);color:var(--faint);font-size:12px;text-align:center}
+  @media print{body{background:#fff;color:#000;font-size:10.5pt}.wrap{max-width:none;padding:0}pre{background:#f4f4f4;color:#000;border:1px solid #ccc}.note,.twrap,pre{page-break-inside:avoid}h2{page-break-after:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <span class="eyebrow">暫定運用ツール ／ Access版</span>
+    <h1>Lu-177 治療スケジュール（Access版）構築手順書</h1>
+    <div class="meta">VBA（マクロ）不要・クエリだけで自動計算／作成日：〔　年　月　日〕</div>
+  </header>
+
+  <div class="note ok">
+    <div class="lbl">この手順の特長</div>
+    <strong>VBA（マクロ）を一切使いません。</strong>テーブルとクエリだけで、治療日・入院日・退院日・発注締切を自動計算し、同じ週の重複も自動検出します。マクロが制限された環境でも動きやすい構成です。
+  </div>
+
+  <h2><span class="n">0</span>用意するもの・完成イメージ</h2>
+  <ul>
+    <li>Microsoft Access（院内PCに導入済みを確認済み）</li>
+    <li>取り込み用CSV 3ファイル（本手順書と同じフォルダ）：<code>M_薬剤.csv</code> / <code>M_サイクル番号.csv</code> / <code>T_患者.csv</code></li>
+  </ul>
+  <p><strong>完成すると：</strong>「患者フォーム」で患者・薬剤・第1治療日・サイクル数を入れるだけで、<strong>全サイクルの日程が自動で一覧表示・印刷</strong>でき、<strong>同じ週に2件重なると赤く警告</strong>されます。</p>
+
+  <h2><span class="n">1</span>空のデータベースを作る</h2>
+  <ol class="steps">
+    <li>Accessを起動 → <strong>「空のデータベース」</strong>を選択。</li>
+    <li>ファイル名を <code>Lu-177治療スケジュール</code> にして、保存先を選び<strong>「作成」</strong>。</li>
+    <li>自動で作られる空テーブル「テーブル1」は、左の一覧で右クリック→閉じて、<strong>保存せず破棄</strong>してかまいません。</li>
+  </ol>
+
+  <h2><span class="n">2</span>3つのCSVをテーブルとして取り込む</h2>
+  <p>下記を<strong>3ファイルとも</strong>同じ手順で行います。</p>
+  <ol class="steps">
+    <li>上部メニュー <strong>「外部データ」→「新しいデータソース」→「ファイルから」→「テキストファイル」</strong>。</li>
+    <li>「参照」で <code>M_薬剤.csv</code> を選択 → <strong>「現在のデータベースの新しいテーブルにソースデータをインポートする」</strong>を選び「OK」。</li>
+    <li>ウィザードで <strong>「区切り記号付き」→「次へ」</strong>、区切り記号は <strong>「カンマ」</strong>、<strong>「先頭行をフィールド名として使う」にチェック</strong>。</li>
+    <li><strong>文字コードで文字化けする場合</strong>は、ウィザードの「詳細設定」→コードページを <strong>「Unicode (UTF-8)」</strong>に。</li>
+    <li>「フィールドのオプション」で<strong>データ型</strong>を下表のとおり設定 → 主キーは<strong>「主キーを設定しない」でも可</strong> → テーブル名を確認して「完了」。</li>
+  </ol>
+  <div class="twrap"><table>
+    <thead><tr><th>CSV</th><th>テーブル名</th><th>フィールドと型</th></tr></thead>
+    <tbody>
+      <tr><td>M_薬剤.csv</td><td><code>M_薬剤</code></td><td>薬剤=短いテキスト／治療間隔=数値(長整数)／しきい値=数値(長整数)</td></tr>
+      <tr><td>M_サイクル番号.csv</td><td><code>M_サイクル番号</code></td><td>番号=数値(長整数)</td></tr>
+      <tr><td>T_患者.csv</td><td><code>T_患者</code></td><td>患者ID=短いテキスト／患者名=短いテキスト／薬剤=短いテキスト／<strong>第1治療日=日付/時刻</strong>／サイクル数=数値(長整数)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note warn"><strong>重要：</strong><code>第1治療日</code>は必ず<strong>「日付/時刻」型</strong>に、数値の列は<strong>「数値」型</strong>にしてください（文字列のままだと計算がずれます）。取り込み後に型がおかしいときは、テーブルを「デザインビュー」で開いて直せます。</div>
+
+  <h2><span class="n">3</span>クエリを4つ作る（SQLを貼り付けるだけ）</h2>
+  <p>各クエリは同じ手順です：<strong>「作成」→「クエリデザイン」→（テーブル選択画面はいったん閉じる）→ 左上「SQL表示」に切り替え → 下のSQLを全文貼り付け → 保存（クエリ名を付ける）。</strong></p>
+
+  <h3>① クエリ名：<code>Q1_治療日</code></h3>
+  <pre><span class="cap">各患者×サイクル数だけ行を作り、治療日を計算</span>SELECT T_患者.患者ID, T_患者.患者名, T_患者.薬剤,
+       M_サイクル番号.番号 AS サイクル,
+       DateAdd("d",[M_薬剤].[治療間隔]*([番号]-1),[第1治療日]) AS 治療日
+FROM (T_患者 INNER JOIN M_薬剤 ON T_患者.薬剤 = M_薬剤.薬剤), M_サイクル番号
+WHERE M_サイクル番号.番号 &lt;= T_患者.サイクル数;</pre>
+
+  <h3>② クエリ名：<code>Q2_治療予定</code></h3>
+  <pre><span class="cap">入院日・退院日・治療週・発注締切を計算</span>SELECT Q1_治療日.患者ID, Q1_治療日.患者名, Q1_治療日.薬剤,
+       Q1_治療日.サイクル, Q1_治療日.治療日,
+       DateAdd("d",-1,[治療日]) AS 入院日,
+       DateAdd("d",1,[治療日]) AS 退院日,
+       [治療日]-(Weekday([治療日],2)-1) AS 治療週,
+       CDate(DateAdd("d",-14,[治療日]-(Weekday([治療日],2)-1))+TimeSerial(17,0,0)) AS 発注締切
+FROM Q1_治療日;</pre>
+
+  <h3>③ クエリ名：<code>Q3_重複週</code></h3>
+  <pre><span class="cap">同じ週に2件以上ある治療週を抽出</span>SELECT Q2_治療予定.治療週, Count(*) AS 件数
+FROM Q2_治療予定
+GROUP BY Q2_治療予定.治療週
+HAVING Count(*)&gt;1;</pre>
+
+  <h3>④ クエリ名：<code>Q4_治療予定_チェック</code></h3>
+  <pre><span class="cap">一覧に「件数」を付ける（件数に数字が入る行＝重複）</span>SELECT Q2_治療予定.*, Q3_重複週.件数
+FROM Q2_治療予定 LEFT JOIN Q3_重複週
+     ON Q2_治療予定.治療週 = Q3_重複週.治療週
+ORDER BY Q2_治療予定.治療日;</pre>
+
+  <div class="note tip"><strong>動作確認：</strong><code>Q4_治療予定_チェック</code> をダブルクリックして開くと、取り込んだ例（山田さん・佐藤さん）の全サイクルが日付付きで並べば成功です。</div>
+
+  <h2><span class="n">4</span>入力フォームを作る（患者の登録用）</h2>
+  <ol class="steps">
+    <li>左の一覧で <code>T_患者</code> を1回クリックして選択。</li>
+    <li>上部 <strong>「作成」→「フォームウィザード」</strong>。テーブルは <code>T_患者</code>、フィールドは<strong>すべて「&gt;&gt;」で選択</strong>→「次へ」。</li>
+    <li>レイアウトは<strong>「単票形式」</strong>→「次へ」→ フォーム名を <code>F_患者入力</code> にして「完了」。</li>
+    <li>このフォームで患者を<strong>1件ずつ追加</strong>していきます（薬剤は「プルヴィクト」または「ルタテラ」と入力）。</li>
+  </ol>
+  <div class="note tip"><strong>薬剤を選択式にしたい場合（任意）：</strong><code>F_患者入力</code>をデザインビューで開き、薬剤欄を右クリック→「コントロールの種類の変更」→「コンボボックス」。値集合ソースに <code>M_薬剤</code> を指定すると、ドロップダウンで選べます。</div>
+
+  <h2><span class="n">5</span>予定表を表示・印刷し、重複を色で見る</h2>
+  <ol class="steps">
+    <li>左の一覧で <code>Q4_治療予定_チェック</code> を選択 → <strong>「作成」→「レポートウィザード」</strong>。</li>
+    <li>フィールドを<strong>すべて選択</strong>→「次へ」を進め、レポート名 <code>R_治療予定表</code> で「完了」。</li>
+    <li><strong>重複を赤くする：</strong>レポートをデザインビューで開き、明細行の <code>件数</code> 欄を選択 → 上部「書式」→「条件付き書式」→「新しいルール」。<br>
+      「フィールドの値が」→「次の値以上」→ <code>1</code> を入力 → 書式で<strong>背景色を赤</strong>に設定 → OK。<br>
+      （件数に数字が入る＝同じ週に2件以上＝重複、の行が赤くなります）</li>
+    <li>印刷は、このレポートを開いて <strong>Ctrl+P</strong>。PDF保存も可能です。</li>
+  </ol>
+
+  <h2><span class="n">6</span>毎日の使い方</h2>
+  <ol>
+    <li><code>F_患者入力</code> で患者を登録（薬剤・第1治療日・サイクル数）。</li>
+    <li><code>R_治療予定表</code>（またはクエリ <code>Q4_治療予定_チェック</code>）で全サイクルの日程を確認・印刷。</li>
+    <li><strong>赤い行（＝同じ週に重複）</strong>が出たら、患者の第1治療日をずらして重複を解消。</li>
+  </ol>
+
+  <h2><span class="n">7</span>注意点（暫定運用のための割り切り）</h2>
+  <ul>
+    <li><strong>入院日</strong>は「治療日の前日」で計算しています（治療日は火曜のため入院＝月曜）。祝日で前倒しが必要な場合は手動でご調整ください。</li>
+    <li><strong>重複回避・祝日週の自動除外は行いません。</strong>赤い警告を見て手作業で日程を調整する運用です（自動化はかえって故障のもとになるため）。</li>
+    <li>この Access版は<strong>正式アプリ導入までの暫定運用</strong>です。個人認証などの本格対応は、別途アプリ改修（要件定義）で進めます。</li>
+    <li>患者名を扱うため、ファイルの保存先・共有は<strong>院内のセキュリティ規定・医療情報部の指示</strong>に従ってください。</li>
+  </ul>
+
+  <footer>Lu-177 治療スケジュール（Access版）構築手順書／暫定運用ツール／本書は院内配布・印刷・PDF保存が可能です。</footer>
+
+</div>
+</body>
+</html>
