@@ -3,6 +3,7 @@ mod crypto;
 mod db;
 mod error;
 mod state;
+mod users;
 
 use state::AppState;
 use tauri::Manager;
@@ -26,15 +27,19 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            // auth
+            // auth / accounts
             commands::auth::is_setup,
             commands::auth::is_unlocked,
-            commands::auth::setup_password,
-            commands::auth::unlock,
+            commands::auth::needs_migration,
+            commands::auth::setup_first_user,
+            commands::auth::login,
             commands::auth::lock,
-            commands::auth::change_password,
-            commands::auth::is_admin_set,
-            commands::auth::set_admin_password,
+            commands::auth::migrate_from_shared,
+            commands::auth::whoami,
+            commands::auth::list_users,
+            commands::auth::add_user,
+            commands::auth::delete_user,
+            commands::auth::change_my_password,
             // settings / shared data folder
             commands::settings::get_data_location,
             commands::settings::pick_data_folder,

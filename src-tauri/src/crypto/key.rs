@@ -22,6 +22,15 @@ pub fn generate_salt() -> [u8; SALT_LEN] {
     salt
 }
 
+/// Generates a random Data Encryption Key (DEK). Unlike a password-derived key,
+/// this is the single key that actually encrypts the database; it is then
+/// "wrapped" (encrypted) separately with each user's password-derived key.
+pub fn generate_dek() -> DerivedKey {
+    let mut k = [0u8; KEY_LEN];
+    rand::thread_rng().fill_bytes(&mut k);
+    DerivedKey(k)
+}
+
 pub fn derive_key(password: &str, salt: &[u8]) -> DerivedKey {
     let iters = NonZeroU32::new(PBKDF2_ITERATIONS).expect("PBKDF2 iterations must be non-zero");
     let mut out = [0u8; KEY_LEN];

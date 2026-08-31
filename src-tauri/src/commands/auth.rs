@@ -1,109 +1,178 @@
-use crate::crypto::key::{derive_key, generate_salt};
+use crate::crypto::key::{derive_key, generate_dek, DerivedKey};
 use crate::db::{open_encrypted, schema::run_migrations};
 use crate::error::{AppError, AppResult};
 use crate::state::{AppState, DbState};
-use rusqlite::OptionalExtension;
+use crate::users::{make_user, unwrap_dek, UserStore};
+use serde::Serialize;
 use std::fs;
 use tauri::State;
 
-/// Returns true if the app has been configured (salt file exists).
+const MIN_PASSWORD_LEN: usize = 8;
+
+/// True once at least one account exists (i.e. first-time setup is done).
 #[tauri::command]
 pub fn is_setup(state: State<'_, AppState>) -> bool {
-    state.paths.salt_path.exists()
+    state.paths.users_path.exists()
 }
 
-/// Returns true if the DB is currently open (session is active).
+/// True if the DB is currently open (a user is logged in).
 #[tauri::command]
 pub fn is_unlocked(state: State<'_, AppState>) -> AppResult<bool> {
     let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
     Ok(guard.is_unlocked())
 }
 
-/// First-time setup: generates salt, derives key, creates encrypted DB, runs migrations.
-/// Returns an error if already configured.
+/// True when an older single-shared-password install exists but no per-user
+/// accounts have been created yet — the one-time migration path applies.
 #[tauri::command]
-pub fn setup_password(
-    password: String,
-    operator: Option<String>,
-    state: State<'_, AppState>,
-) -> AppResult<()> {
-    if state.paths.salt_path.exists() {
-        return Err(AppError::AlreadyConfigured);
+pub fn needs_migration(state: State<'_, AppState>) -> bool {
+    !state.paths.users_path.exists()
+        && state.paths.salt_path.exists()
+        && state.paths.db_path.exists()
+}
+
+#[derive(Serialize)]
+pub struct SessionInfo {
+    pub username: String,
+    pub role: String,
+}
+
+#[derive(Serialize)]
+pub struct UserInfo {
+    pub username: String,
+    pub role: String,
+    pub created_at: String,
+}
+
+fn validate_new_credentials(username: &str, password: &str) -> AppResult<()> {
+    if username.trim().is_empty() {
+        return Err(AppError::Other("利用者名を入力してください".into()));
     }
-    if password.len() < 8 {
+    if password.len() < MIN_PASSWORD_LEN {
         return Err(AppError::Other(
             "パスワードは8文字以上にしてください".into(),
         ));
     }
+    Ok(())
+}
+
+/// Opens the DB with the given DEK, runs migrations, and marks the session
+/// unlocked for `username`/`role`. Writes a login audit entry.
+fn open_session(
+    state: &State<'_, AppState>,
+    dek: DerivedKey,
+    username: &str,
+    role: &str,
+    action: &str,
+) -> AppResult<()> {
+    let conn = open_encrypted(&state.paths.db_path, &dek)?;
+    run_migrations(&conn)?;
+
+    let mut guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
+    *guard = DbState::Unlocked { conn, key: dek };
+    if let DbState::Unlocked { conn, .. } = &*guard {
+        crate::commands::audit::write(conn, username, action, "");
+    }
+    drop(guard);
+
+    if let Ok(mut o) = state.operator.lock() {
+        *o = username.to_string();
+    }
+    if let Ok(mut r) = state.role.lock() {
+        *r = role.to_string();
+    }
+    Ok(())
+}
+
+/// First-time setup: creates the initial administrator account, generates the
+/// shared DEK, and initializes the encrypted database.
+#[tauri::command]
+pub fn setup_first_user(
+    username: String,
+    password: String,
+    state: State<'_, AppState>,
+) -> AppResult<()> {
+    if state.paths.users_path.exists() {
+        return Err(AppError::AlreadyConfigured);
+    }
+    validate_new_credentials(&username, &password)?;
 
     fs::create_dir_all(&state.paths.data_dir)?;
     fs::create_dir_all(&state.paths.media_dir)?;
 
-    let salt = generate_salt();
-    let key = derive_key(&password, &salt);
+    // The single key that actually encrypts the database.
+    let dek = generate_dek();
+    let admin = make_user(username.trim(), &password, "admin", &dek)?;
+    let store = UserStore {
+        version: 1,
+        users: vec![admin],
+    };
+    store.save(&state.paths.users_path)?;
 
-    // Create DB and run migrations before committing the salt file.
-    // If anything fails here, no salt is written → is_setup() stays false.
-    let conn = open_encrypted(&state.paths.db_path, &key)?;
-    run_migrations(&conn)?;
-
-    // Only write salt after the DB is confirmed good.
-    if let Err(e) = fs::write(&state.paths.salt_path, hex::encode(salt)) {
-        // Partial-state cleanup: remove the just-created DB so next attempt is clean.
-        let _ = fs::remove_file(&state.paths.db_path);
-        return Err(AppError::Io(e));
-    }
-
-    let op = operator.unwrap_or_default();
-    let mut guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
-    *guard = DbState::Unlocked { conn, key };
-    if let DbState::Unlocked { conn, .. } = &*guard {
-        crate::commands::audit::write(conn, &op, "初回セットアップ", "");
-    }
-    drop(guard);
-    if let Ok(mut o) = state.operator.lock() {
-        *o = op;
-    }
-    Ok(())
+    open_session(&state, dek, username.trim(), "admin", "初回セットアップ")
 }
 
-/// Reads the stored salt, re-derives the key from the given password,
-/// and opens the encrypted DB. Returns InvalidPassword on wrong password.
+/// Logs in with an individual account: unwraps the shared DEK with the user's
+/// password and opens the database.
 #[tauri::command]
-pub fn unlock(
-    password: String,
-    operator: Option<String>,
+pub fn login(username: String, password: String, state: State<'_, AppState>) -> AppResult<()> {
+    if !state.paths.users_path.exists() {
+        return Err(AppError::NotConfigured);
+    }
+    let store = UserStore::load(&state.paths.users_path)?;
+    let rec = store
+        .find(username.trim())
+        .ok_or(AppError::InvalidPassword)?; // don't reveal which part is wrong
+    let role = rec.role.clone();
+    let dek = unwrap_dek(rec, &password)?; // InvalidPassword on wrong password
+    open_session(&state, dek, username.trim(), &role, "ログイン")
+}
+
+/// One-time migration from the old single-shared-password scheme. Verifies the
+/// old shared password can open the DB, then creates the first admin account
+/// that wraps the *same* key (so no data re-encryption is needed).
+#[tauri::command]
+pub fn migrate_from_shared(
+    shared_password: String,
+    admin_username: String,
+    admin_password: String,
     state: State<'_, AppState>,
 ) -> AppResult<()> {
+    if state.paths.users_path.exists() {
+        return Err(AppError::AlreadyConfigured);
+    }
     if !state.paths.salt_path.exists() {
         return Err(AppError::NotConfigured);
     }
+    validate_new_credentials(&admin_username, &admin_password)?;
 
+    // Re-derive the existing key from the old shared password.
     let salt_hex = fs::read_to_string(&state.paths.salt_path)?;
     let salt = hex::decode(salt_hex.trim())?;
+    let dek = derive_key(&shared_password, &salt);
 
-    let key = derive_key(&password, &salt);
-    let conn = open_encrypted(&state.paths.db_path, &key)?;
+    // Verify the password actually opens the DB (a query fails on wrong key).
+    let conn = open_encrypted(&state.paths.db_path, &dek)?;
+    run_migrations(&conn).map_err(|_| AppError::InvalidPassword)?;
+    drop(conn);
 
-    // run_migrations is idempotent — ensures schema is up-to-date after updates.
-    run_migrations(&conn)?;
+    let admin = make_user(admin_username.trim(), &admin_password, "admin", &dek)?;
+    let store = UserStore {
+        version: 1,
+        users: vec![admin],
+    };
+    store.save(&state.paths.users_path)?;
 
-    let op = operator.unwrap_or_default();
-    let mut guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
-    *guard = DbState::Unlocked { conn, key };
-    if let DbState::Unlocked { conn, .. } = &*guard {
-        crate::commands::audit::write(conn, &op, "ロック解除", "");
-    }
-    drop(guard);
-    if let Ok(mut o) = state.operator.lock() {
-        *o = op;
-    }
-    Ok(())
+    open_session(
+        &state,
+        dek,
+        admin_username.trim(),
+        "admin",
+        "共有パスワードから移行",
+    )
 }
 
-/// Closes the DB connection and drops the in-memory session.
-/// The derived key is never stored, so lock means the data is inaccessible
-/// until the user re-enters their password.
+/// Locks the session: closes the DB and clears the in-memory key and identity.
 #[tauri::command]
 pub fn lock(state: State<'_, AppState>) -> AppResult<()> {
     let op = crate::commands::audit::operator_of(&state.operator);
@@ -116,138 +185,163 @@ pub fn lock(state: State<'_, AppState>) -> AppResult<()> {
     if let Ok(mut o) = state.operator.lock() {
         o.clear();
     }
+    if let Ok(mut r) = state.role.lock() {
+        r.clear();
+    }
     Ok(())
 }
 
-/// Verifies an admin password against a stored "salt_hex:hash_hex" value.
-fn verify_admin_hash(stored: &str, password: &str) -> bool {
-    let mut parts = stored.splitn(2, ':');
-    let salt_hex = parts.next().unwrap_or("");
-    let expected = parts.next().unwrap_or("");
-    let salt = match hex::decode(salt_hex) {
-        Ok(s) => s,
-        Err(_) => return false,
-    };
-    let key = derive_key(password, &salt);
-    hex::encode(key.0) == expected
+/// Returns the current session's username and role.
+#[tauri::command]
+pub fn whoami(state: State<'_, AppState>) -> AppResult<SessionInfo> {
+    let username = crate::commands::audit::operator_of(&state.operator);
+    let role = state
+        .role
+        .lock()
+        .map(|g| g.clone())
+        .unwrap_or_default();
+    Ok(SessionInfo { username, role })
 }
 
-/// True if an administrator password has been configured. Requires the DB
-/// to be unlocked (the admin hash lives in the encrypted app_config table,
-/// so it is shared across all PCs using the same data folder).
-#[tauri::command]
-pub fn is_admin_set(state: State<'_, AppState>) -> AppResult<bool> {
-    let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
-    match &*guard {
-        DbState::Locked => Err(AppError::Locked),
-        DbState::Unlocked { conn, .. } => {
-            let n: i64 = conn.query_row(
-                "SELECT COUNT(*) FROM app_config WHERE key = 'admin_password'",
-                [],
-                |r| r.get(0),
-            )?;
-            Ok(n > 0)
-        }
-    }
-}
-
-/// Sets (first time) or changes the administrator password. When one already
-/// exists, `current` must match it. Only the administrator should know this.
-#[tauri::command]
-pub fn set_admin_password(
-    current: Option<String>,
-    new_password: String,
-    state: State<'_, AppState>,
-) -> AppResult<()> {
-    if new_password.len() < 6 {
+fn require_admin(state: &State<'_, AppState>) -> AppResult<()> {
+    let role = state
+        .role
+        .lock()
+        .map(|g| g.clone())
+        .unwrap_or_default();
+    if role != "admin" {
         return Err(AppError::Other(
-            "管理者パスワードは6文字以上にしてください".into(),
+            "この操作は管理者のみ実行できます".into(),
         ));
     }
+    Ok(())
+}
+
+/// Lists all accounts (names/roles only — no secrets). Requires an open session.
+#[tauri::command]
+pub fn list_users(state: State<'_, AppState>) -> AppResult<Vec<UserInfo>> {
+    {
+        let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
+        if !guard.is_unlocked() {
+            return Err(AppError::Locked);
+        }
+    }
+    let store = UserStore::load(&state.paths.users_path)?;
+    Ok(store
+        .users
+        .into_iter()
+        .map(|u| UserInfo {
+            username: u.username,
+            role: u.role,
+            created_at: u.created_at,
+        })
+        .collect())
+}
+
+/// Adds a new account (admin only). The new user's password wraps the same
+/// shared DEK, so they open the same data.
+#[tauri::command]
+pub fn add_user(
+    username: String,
+    password: String,
+    role: String,
+    state: State<'_, AppState>,
+) -> AppResult<()> {
+    require_admin(&state)?;
+    validate_new_credentials(&username, &password)?;
+    let role = if role == "admin" { "admin" } else { "user" };
+
     let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
     match &*guard {
         DbState::Locked => Err(AppError::Locked),
-        DbState::Unlocked { conn, .. } => {
-            let existing: Option<String> = conn
-                .query_row(
-                    "SELECT value FROM app_config WHERE key = 'admin_password'",
-                    [],
-                    |r| r.get(0),
-                )
-                .optional()?;
-            let first = existing.is_none();
-            if let Some(stored) = &existing {
-                let cur = current
-                    .ok_or_else(|| AppError::Other("現在の管理者パスワードを入力してください".into()))?;
-                if !verify_admin_hash(stored, &cur) {
-                    return Err(AppError::Other("現在の管理者パスワードが違います".into()));
-                }
+        DbState::Unlocked { conn, key } => {
+            let mut store = UserStore::load(&state.paths.users_path)?;
+            if store.find(username.trim()).is_some() {
+                return Err(AppError::Other(
+                    "同じ利用者名が既に存在します".into(),
+                ));
             }
-            let salt = generate_salt();
-            let key = derive_key(&new_password, &salt);
-            let value = format!("{}:{}", hex::encode(salt), hex::encode(key.0));
-            conn.execute(
-                "INSERT INTO app_config (key, value) VALUES ('admin_password', ?1)
-                 ON CONFLICT(key) DO UPDATE SET value = ?1",
-                rusqlite::params![value],
-            )?;
+            let rec = make_user(username.trim(), &password, role, key)?;
+            store.users.push(rec);
+            store.save(&state.paths.users_path)?;
             let op = crate::commands::audit::operator_of(&state.operator);
             crate::commands::audit::write(
                 conn,
                 &op,
-                if first { "管理者パスワード設定" } else { "管理者パスワード変更" },
-                "",
+                "利用者追加",
+                &format!("{}（{}）", username.trim(), role),
             );
             Ok(())
         }
     }
 }
 
-/// Changes the shared unlock password. Requires the administrator password.
-/// Re-encrypts (rekeys) the live database with a key derived from the new
-/// password (same salt); the session stays unlocked and data is preserved.
+/// Removes an account (admin only). Cannot remove the last administrator.
 #[tauri::command]
-pub fn change_password(
+pub fn delete_user(username: String, state: State<'_, AppState>) -> AppResult<()> {
+    require_admin(&state)?;
+    let target = username.trim().to_string();
+
+    let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
+    match &*guard {
+        DbState::Locked => Err(AppError::Locked),
+        DbState::Unlocked { conn, .. } => {
+            let mut store = UserStore::load(&state.paths.users_path)?;
+            let rec = store
+                .find(&target)
+                .ok_or_else(|| AppError::Other("その利用者は存在しません".into()))?
+                .clone();
+            if rec.role == "admin" && store.admin_count() <= 1 {
+                return Err(AppError::Other(
+                    "最後の管理者は削除できません".into(),
+                ));
+            }
+            store.users.retain(|u| u.username != target);
+            store.save(&state.paths.users_path)?;
+            let op = crate::commands::audit::operator_of(&state.operator);
+            crate::commands::audit::write(conn, &op, "利用者削除", &target);
+            Ok(())
+        }
+    }
+}
+
+/// Changes the logged-in user's own password. Re-wraps the shared DEK with a
+/// key derived from the new password.
+#[tauri::command]
+pub fn change_my_password(
+    current_password: String,
     new_password: String,
-    admin_password: String,
     state: State<'_, AppState>,
 ) -> AppResult<()> {
-    if !state.paths.salt_path.exists() {
-        return Err(AppError::NotConfigured);
+    let me = crate::commands::audit::operator_of(&state.operator);
+    if me.is_empty() {
+        return Err(AppError::Locked);
     }
-    if new_password.len() < 8 {
-        return Err(AppError::Other("パスワードは8文字以上にしてください".into()));
+    if new_password.len() < MIN_PASSWORD_LEN {
+        return Err(AppError::Other(
+            "パスワードは8文字以上にしてください".into(),
+        ));
     }
 
-    let salt_hex = fs::read_to_string(&state.paths.salt_path)?;
-    let salt = hex::decode(salt_hex.trim())?;
-    let new_key = derive_key(&new_password, &salt);
-    let new_hex = hex::encode(new_key.0);
-
-    let mut guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
-    match &mut *guard {
+    let guard = state.db.lock().map_err(|_| AppError::LockPoisoned)?;
+    match &*guard {
         DbState::Locked => Err(AppError::Locked),
-        DbState::Unlocked { conn, key } => {
-            // Only the administrator may change the shared password.
-            let stored: Option<String> = conn
-                .query_row(
-                    "SELECT value FROM app_config WHERE key = 'admin_password'",
-                    [],
-                    |r| r.get(0),
-                )
-                .optional()?;
-            let stored = stored.ok_or_else(|| {
-                AppError::Other("管理者パスワードが未設定です。先に管理者パスワードを設定してください。".into())
-            })?;
-            if !verify_admin_hash(&stored, &admin_password) {
-                return Err(AppError::Other("管理者パスワードが違います".into()));
+        DbState::Unlocked { conn, .. } => {
+            let mut store = UserStore::load(&state.paths.users_path)?;
+            let rec = store
+                .find(&me)
+                .ok_or_else(|| AppError::Other("利用者が見つかりません".into()))?
+                .clone();
+            // Verify current password (and recover the DEK) before re-wrapping.
+            let dek = unwrap_dek(&rec, &current_password)?;
+            let updated = make_user(&me, &new_password, &rec.role, &dek)?;
+            for u in store.users.iter_mut() {
+                if u.username == me {
+                    *u = updated.clone();
+                }
             }
-
-            // Re-encrypt the live database with the new key (same salt).
-            conn.execute_batch(&format!("PRAGMA rekey = \"x'{}'\";", new_hex))?;
-            *key = new_key;
-            let op = crate::commands::audit::operator_of(&state.operator);
-            crate::commands::audit::write(conn, &op, "解除パスワード変更", "");
+            store.save(&state.paths.users_path)?;
+            crate::commands::audit::write(conn, &me, "パスワード変更", "");
             Ok(())
         }
     }

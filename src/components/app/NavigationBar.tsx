@@ -1,4 +1,4 @@
-import { LogOut, KeyRound, FolderCog, ScrollText } from 'lucide-react';
+import { LogOut, ShieldCheck, FolderCog, ScrollText } from 'lucide-react';
 
 interface NavigationBarProps {
   onSignOut: () => void;
@@ -21,8 +21,8 @@ export function NavigationBar({ onSignOut, onChangePassword, onDataLocation, onA
         保存先
       </button>
       <button onClick={onChangePassword} className={btn}>
-        <KeyRound className="h-4 w-4" />
-        パスワード変更
+        <ShieldCheck className="h-4 w-4" />
+        利用者/パスワード
       </button>
       <button onClick={onSignOut} className={btn}>
         <LogOut className="h-4 w-4" />

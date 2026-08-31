@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LocalAuth from './components/LocalAuth';
 import PatientManager from './components/PatientManager';
 import { NavigationBar } from './components/app/NavigationBar';
-import { ChangePasswordModal } from './components/ChangePasswordModal';
+import { AccountModal } from './components/AccountModal';
 import { DataLocationModal } from './components/DataLocationModal';
 import { AuditLogModal } from './components/AuditLogModal';
 import { CheckCircle, AlertCircle } from 'lucide-react';
@@ -33,12 +33,9 @@ function AppContent() {
         </div>
 
         {showChangePassword && (
-          <ChangePasswordModal
+          <AccountModal
             onClose={() => setShowChangePassword(false)}
-            onChanged={() => {
-              setShowChangePassword(false);
-              setMessage({ type: 'success', text: 'パスワードを変更しました' });
-            }}
+            onChanged={text => setMessage({ type: 'success', text })}
           />
         )}
 

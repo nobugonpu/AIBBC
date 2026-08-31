@@ -8,6 +8,8 @@ pub struct AppPaths {
     pub db_path: PathBuf,
     pub salt_path: PathBuf,
     pub media_dir: PathBuf,
+    /// Per-user account store (envelope-encrypted DEK per user).
+    pub users_path: PathBuf,
 }
 
 impl AppPaths {
@@ -15,11 +17,13 @@ impl AppPaths {
         let db_path = data_dir.join("data.db");
         let salt_path = data_dir.join("salt");
         let media_dir = data_dir.join("media");
+        let users_path = data_dir.join("users.json");
         Self {
             data_dir,
             db_path,
             salt_path,
             media_dir,
+            users_path,
         }
     }
 }
@@ -46,8 +50,10 @@ pub struct AppState {
     /// so the "where is the shared folder" setting travels with the machine.
     pub config_path: PathBuf,
     pub db: Mutex<DbState>,
-    /// Name of the person who unlocked this session, recorded in the audit log.
+    /// Username of the person logged into this session, recorded in the audit log.
     pub operator: Mutex<String>,
+    /// Role of the logged-in user ("admin" or "user"); empty when locked.
+    pub role: Mutex<String>,
 }
 
 impl AppState {
@@ -57,6 +63,7 @@ impl AppState {
             config_path,
             db: Mutex::new(DbState::Locked),
             operator: Mutex::new(String::new()),
+            role: Mutex::new(String::new()),
         }
     }
 }
