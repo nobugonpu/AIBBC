@@ -67,6 +67,7 @@
 
   <div class="tabs">
     <button data-tab="calc" class="active">計算</button>
+    <button data-tab="measure">実効半減期（実測）</button>
     <button data-tab="log">記録</button>
     <button data-tab="about">定数・根拠</button>
   </div>
@@ -102,7 +103,13 @@
           <label>投与直後の1m線量率 D₀（µSv/h）</label>
           <input id="d0" type="number" step="0.1" min="0" placeholder="例：30">
         </div>
-        <div></div>
+        <div>
+          <label>この患者の実測実効半減期（時間・任意）</label>
+          <input id="teffMeasured" type="number" step="0.1" min="0" placeholder="前回実測があれば">
+          <div style="margin-top:6px">
+            <button class="btn sub" id="lookupBtn" type="button" style="margin:0;padding:6px 12px;font-size:12.5px">患者IDから前回の実測値を取得</button>
+          </div>
+        </div>
       </div>
       <div class="err" id="err"></div>
       <button class="btn" id="calcBtn">退院見込みを計算</button>
@@ -111,6 +118,51 @@
       <div class="result" id="result">
         <div class="head" id="rhead"></div>
         <div class="body" id="rbody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 実効半減期（実測） -->
+  <div class="pane" id="pane-measure">
+    <div class="card">
+      <p class="muted" style="margin-top:0">
+        投与直後（1回目）と退出基準測定時（2回目）の1m線量率から、<strong>この患者の実測 実効半減期</strong>を算出し、保存します。次回サイクルの予測に利用できます。
+      </p>
+      <div class="row">
+        <div><label>患者ID（保存に必要）</label><input id="m_pid" type="text" placeholder="例：P-001"></div>
+        <div><label>患者名（任意）</label><input id="m_pname" type="text" placeholder="例：山田 太郎"></div>
+      </div>
+      <label>薬剤</label>
+      <select id="m_drug">
+        <option value="pluvicto">プルヴィクト（Lu-177 PSMA-617）</option>
+        <option value="lutathera">ルタテラ（Lu-177 DOTATATE）</option>
+      </select>
+      <div class="row" style="margin-top:4px">
+        <div><label>1回目 測定日時（投与直後）</label><input id="m_t0" type="datetime-local"></div>
+        <div><label>1回目 線量率 D₀（µSv/h）</label><input id="m_d0" type="number" step="0.1" min="0" placeholder="例：30"></div>
+      </div>
+      <div class="row">
+        <div><label>2回目 測定日時（退出基準測定時）</label><input id="m_t1" type="datetime-local"></div>
+        <div><label>2回目 線量率 D₁（µSv/h）</label><input id="m_d1" type="number" step="0.1" min="0" placeholder="例：18"></div>
+      </div>
+      <div class="err" id="m_err"></div>
+      <button class="btn" id="m_calcBtn">実効半減期を算出</button>
+      <button class="btn sub" id="m_saveBtn" style="display:none">この患者の実測値として保存</button>
+
+      <div class="result" id="m_result">
+        <div class="head" id="m_rhead"></div>
+        <div class="body" id="m_rbody"></div>
+      </div>
+
+      <div style="margin-top:16px">
+        <strong style="font-size:14px">保存済みの実測値（患者別）</strong>
+        <div style="overflow-x:auto;margin-top:6px">
+          <table id="m_tbl">
+            <thead><tr><th>患者ID</th><th>患者名</th><th>薬剤</th><th>実効半減期</th><th>生物学的半減期</th><th>更新日時</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="muted" id="m_empty">まだ保存された実測値はありません。</p>
       </div>
     </div>
   </div>
@@ -170,7 +222,9 @@ const DRUGS = {
   lutathera: { name: "ルタテラ",     threshold: 18, teff_h: 34, tphys_d: 6.647 },
 };
 const LN2 = Math.log(2);
+const T_PHYS_H = 6.647 * 24; // 物理半減期（時間）= 159.528h
 const LOG_KEY = "lu177_exit_log_v1";
+const PAT_KEY = "lu177_patient_teff_v1";
 
 // ===== 計算エンジン（純粋関数）=====
 // 到達までの日数。D0<=thr のとき 0。到達不能な入力は NaN を返さないよう検証は呼び出し側で。
@@ -194,6 +248,20 @@ function fmtDateTime(date) {
   return date.getFullYear() + "/" + p(date.getMonth()+1) + "/" + p(date.getDate())
        + " " + p(date.getHours()) + ":" + p(date.getMinutes());
 }
+// 2点測定から実効半減期(時間)。D0>D1>0, dtHours>0 が前提（検証は呼び出し側）。
+function effectiveHalfLifeHours(D0, D1, dtHours) {
+  return (LN2 * dtHours) / Math.log(D0 / D1);
+}
+// 実効半減期(時間)→生物学的半減期(時間)。物理より遅い（算出不能）なら null。
+function biologicalHalfLifeHours(teff_h) {
+  const inv = 1 / teff_h - 1 / T_PHYS_H;
+  if (inv <= 0) return null;
+  return 1 / inv;
+}
+function fmtHours(h) {
+  if (h == null) return "—";
+  return h.toFixed(1) + "時間（約" + (h / 24).toFixed(1) + "日）";
+}
 
 // ===== UI =====
 const $ = id => document.getElementById(id);
@@ -207,6 +275,7 @@ document.querySelectorAll(".tabs button").forEach(b => {
     document.querySelectorAll(".pane").forEach(p => p.classList.remove("active"));
     $("pane-" + b.dataset.tab).classList.add("active");
     if (b.dataset.tab === "log") renderLog();
+    if (b.dataset.tab === "measure") renderMeasureTable();
   });
 });
 
@@ -234,11 +303,21 @@ $("calcBtn").addEventListener("click", () => {
   const dPhys = daysToThreshold(drug.tphys_d,    d0, drug.threshold);
   const immediate = d0 <= drug.threshold;
 
+  // 任意：この患者の実測実効半減期（時間）
+  const teffMeas = parseFloat($("teffMeasured").value);
+  let dMeas = null, relMeas = null;
+  if (isFinite(teffMeas) && teffMeas > 0) {
+    dMeas = daysToThreshold(teffMeas/24, d0, drug.threshold);
+    relMeas = addDays(adminDate, dMeas);
+  }
+
   lastResult = {
     calcAt: new Date(), pid: $("pid").value.trim(), pname: $("pname").value.trim(), drug: drug.name,
     adminDate, d0, threshold: drug.threshold,
     dEff, dPhys,
     relEff: addDays(adminDate, dEff), relPhys: addDays(adminDate, dPhys),
+    teffMeas: (isFinite(teffMeas) && teffMeas > 0) ? teffMeas : null,
+    dMeas, relMeas,
     immediate
   };
   renderResult(lastResult, drug);
@@ -257,6 +336,12 @@ function renderResult(r, drug){
       + '<div class="box max"><div class="k">最長の見込み（物理半減期 6.647日）</div>'
       + '<div class="v">'+fmtDateTime(r.relPhys)+'</div><div class="s">約 '+fmtDuration(r.dPhys)+' 後</div></div>'
       + '</div>';
+    if (r.teffMeas) {
+      html += '<div class="box min" style="margin-top:10px;background:var(--blue-bg);border-color:#b9d0f5">'
+        + '<div class="k">この患者の実測ベースの見込み（実測実効半減期 '+r.teffMeas+'h）</div>'
+        + '<div class="v" style="color:var(--blue)">'+fmtDateTime(r.relMeas)+'</div>'
+        + '<div class="s">約 '+fmtDuration(r.dMeas)+' 後　※前回サイクルの実測値による参考予測</div></div>';
+    }
   }
   html += '<div class="meta">投与日時：'+fmtDateTime(r.adminDate)+'　／　D₀：'+r.d0+' µSv/h'
         + (r.pid ? '　／　患者ID：'+escapeHtml(r.pid) : '')
@@ -321,6 +406,95 @@ $("csvBtn").addEventListener("click", () => {
 });
 
 $("printBtn").addEventListener("click", () => window.print());
+
+// ===== 患者別 実測実効半減期ストア =====
+function loadPatients(){ try { return JSON.parse(localStorage.getItem(PAT_KEY)) || {}; } catch(e){ return {}; } }
+function savePatients(o){ try { localStorage.setItem(PAT_KEY, JSON.stringify(o)); } catch(e){} }
+
+// 計算タブ：患者IDから前回の実測実効半減期を取得
+$("lookupBtn").addEventListener("click", () => {
+  const id = $("pid").value.trim();
+  if (!id) { alert("患者IDを入力してください。"); return; }
+  const rec = loadPatients()[id];
+  if (!rec || rec.teff_h == null) { alert("この患者IDの実測値は保存されていません。「実効半減期（実測）」タブで登録できます。"); return; }
+  $("teffMeasured").value = rec.teff_h;
+  if (!$("pname").value.trim() && rec.pname) $("pname").value = rec.pname;
+});
+
+// 実測タブ：日時の初期値＝現在
+(function initMeasNow(){
+  const n = new Date(); n.setMinutes(n.getMinutes() - n.getTimezoneOffset());
+  const v = n.toISOString().slice(0,16);
+  $("m_t0").value = v; $("m_t1").value = v;
+})();
+
+let lastMeasure = null;
+function mErr(msg){ const e=$("m_err"); e.textContent=msg; e.classList.add("show"); $("m_result").classList.remove("show"); $("m_saveBtn").style.display="none"; }
+
+$("m_calcBtn").addEventListener("click", () => {
+  $("m_err").classList.remove("show");
+  const drug = DRUGS[$("m_drug").value];
+  const d0 = parseFloat($("m_d0").value);
+  const d1 = parseFloat($("m_d1").value);
+  const t0s = $("m_t0").value, t1s = $("m_t1").value;
+  if (!t0s || !t1s) return mErr("1回目・2回目の測定日時を入力してください。");
+  if (!isFinite(d0) || d0 <= 0 || !isFinite(d1) || d1 <= 0) return mErr("線量率 D₀・D₁ を正しく入力してください。");
+  const t0 = new Date(t0s), t1 = new Date(t1s);
+  const dtH = (t1 - t0) / 3600000;
+  if (!(dtH > 0)) return mErr("2回目の測定日時は1回目より後にしてください。");
+  if (d1 >= d0) return mErr("2回目の線量率が1回目以上です。測定値・日時をご確認ください。");
+
+  const teff = effectiveHalfLifeHours(d0, d1, dtH);
+  const tbio = biologicalHalfLifeHours(teff);
+  lastMeasure = { pid:$("m_pid").value.trim(), pname:$("m_pname").value.trim(), drug:drug.name,
+                  d0, d1, dtH, teff, tbio, at: fmtDateTime(new Date()) };
+
+  let html = '<div class="range">'
+    + '<div class="box min"><div class="k">実測 実効半減期</div><div class="v">'+fmtHours(teff)+'</div></div>'
+    + '<div class="box max"><div class="k">生物学的半減期（逆算）</div><div class="v">'+fmtHours(tbio)+'</div></div>'
+    + '</div>';
+  html += '<div class="meta">D₀ '+d0+' → D₁ '+d1+' µSv/h　／　経過 '+dtH.toFixed(1)+' 時間（約'+(dtH/24).toFixed(1)+'日）</div>';
+  if (tbio == null)
+    html += '<div class="warn">実測値が物理半減期より遅い減衰を示しており、生物学的半減期は算出できません（測定誤差の可能性）。測定値をご確認ください。</div>';
+  else
+    html += '<div class="warn">この実効半減期は投与直後〜退出時を平均した実測値です。次回サイクルでは<strong>腎機能等が大きく変わらない前提</strong>の参考値としてご利用ください。予測は目安・最終は実測／医師判断。</div>';
+  $("m_rhead").textContent = drug.name + "：この患者の実測 実効半減期";
+  $("m_rbody").innerHTML = html;
+  $("m_result").classList.add("show");
+  $("m_saveBtn").style.display = $("m_pid").value.trim() ? "inline-block" : "none";
+});
+
+$("m_saveBtn").addEventListener("click", () => {
+  if (!lastMeasure || !lastMeasure.pid) { alert("保存には患者IDが必要です。"); return; }
+  const pats = loadPatients();
+  pats[lastMeasure.pid] = {
+    pname: lastMeasure.pname, drug: lastMeasure.drug,
+    teff_h: Number(lastMeasure.teff.toFixed(1)),
+    tbio_h: lastMeasure.tbio == null ? null : Number(lastMeasure.tbio.toFixed(1)),
+    updatedAt: lastMeasure.at
+  };
+  savePatients(pats);
+  $("m_saveBtn").textContent = "保存しました ✓";
+  setTimeout(()=>{ $("m_saveBtn").textContent = "この患者の実測値として保存"; }, 1500);
+  renderMeasureTable();
+});
+
+function renderMeasureTable(){
+  const pats = loadPatients();
+  const ids = Object.keys(pats);
+  const tb = $("m_tbl").querySelector("tbody");
+  tb.innerHTML = "";
+  $("m_empty").style.display = ids.length ? "none" : "block";
+  ids.forEach(id => {
+    const r = pats[id];
+    const tr = document.createElement("tr");
+    [id, r.pname||"—", r.drug||"—",
+     (r.teff_h!=null ? r.teff_h+"時間" : "—"),
+     (r.tbio_h!=null ? r.tbio_h+"時間" : "—"),
+     r.updatedAt||"—"].forEach(v => { const td=document.createElement("td"); td.textContent=v; tr.appendChild(td); });
+    tb.appendChild(tr);
+  });
+}
 </script>
 </body>
 </html>
