@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>退出計算 定数 決定・承認記録シート</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+  :root{--bg:#f5f8fc;--surface:#fff;--surface-2:#eef3f9;--ink:#16202e;--soft:#55647c;--faint:#8a99b0;
+    --border:#e2e9f1;--blue:#1f5fbf;--blue-bg:#eef4ff;--green:#0f9d6e;--green-bg:#eafaf3;--green-ink:#0a6b4b;
+    --amber:#b45309;--amber-bg:#fff7ea;--amber-line:#f0c680;--red:#c02626;--shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);}
+  @media(prefers-color-scheme:dark){:root{--bg:#0d1420;--surface:#151d2b;--surface-2:#1c2637;--ink:#e7edf6;--soft:#a7b4c9;
+    --faint:#6c7b93;--border:#263143;--blue:#6b9bff;--blue-bg:#16233c;--green:#35d39c;--green-bg:#10281f;--green-ink:#86efc5;
+    --amber:#f6be5f;--amber-bg:#2a2012;--amber-line:#5a4520;--red:#f78a8a;}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;font-size:14px;line-height:1.65}
+  .wrap{max-width:860px;margin:0 auto;padding:0 22px 56px}
+  header.mast{padding:30px 0 14px;border-bottom:3px solid var(--blue);margin-bottom:12px}
+  .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.09em;color:var(--blue);background:var(--blue-bg);padding:4px 12px;border-radius:999px;display:inline-block}
+  header.mast h1{font-size:clamp(20px,3vw,26px);font-weight:700;margin:12px 0 4px}
+  header.mast .meta{color:var(--soft);font-size:13px}
+  h2{font-size:16px;font-weight:700;margin:22px 0 9px;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;gap:9px;align-items:center}
+  h2 .n{font-size:12px;color:#fff;background:var(--blue);min-width:23px;height:23px;border-radius:6px;display:inline-grid;place-items:center;font-weight:700}
+  p{margin:8px 0}
+  .twrap{overflow-x:auto;margin:10px 0;border:1px solid var(--border);border-radius:10px}
+  table{width:100%;border-collapse:collapse;font-size:12.8px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  thead th{background:var(--surface-2);color:var(--soft);font-weight:700;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  .fill{color:var(--red);font-weight:700}
+  .fixed{color:var(--green-ink);font-weight:700}
+  .note{border-radius:9px;padding:11px 14px;margin:12px 0;border:1px solid var(--border);font-size:12.8px}
+  .note.tip{background:var(--blue-bg);border-color:color-mix(in srgb,var(--blue) 30%,transparent)}
+  .note.warn{background:var(--amber-bg);border-color:var(--amber-line);color:var(--amber)}
+  .note .lbl{font-weight:700;margin-bottom:2px}
+  code{font-family:Consolas,monospace;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px}
+  .sign{margin-top:14px}
+  .sign table td{height:40px}
+  a{color:var(--blue);word-break:break-all}
+  footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--border);color:var(--faint);font-size:11.5px;text-align:center}
+  @media print{body{background:#fff;color:#000;font-size:10pt}.wrap{max-width:none;padding:0}.note,.twrap,.sign{page-break-inside:avoid}h2{page-break-after:avoid}a{color:#000}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <span class="eyebrow">放射線安全管理 ／ 定数の決定・承認記録</span>
+    <h1>Lu-177 退出基準到達時間 算出ツール　定数 決定・承認記録シート</h1>
+    <div class="meta">本シートは、算出ツールが使用する定数の根拠・採用値を、放射線安全管理責任者が決定・承認した記録です。</div>
+  </header>
+
+  <div class="note tip">
+    <div class="lbl">位置づけ</div>
+    本ツールが表示する退出可能時刻は<strong>「予測（目安）」</strong>です。<strong>最終的な退出可否は、退出前の実測および医師の判断</strong>により確定します。本シートの定数は、その予測計算に用いる値です。
+  </div>
+
+  <h2><span class="n">1</span>計算モデル</h2>
+  <p>投与直後に測定した体表面から1mの線量率 D₀ が、指数的に減衰すると仮定し、しきい値まで下がる時刻を求めます。</p>
+  <p><code>退出到達まで（日）＝ (半減期 ÷ ln2) × ln( D₀ ÷ しきい値 )</code>（D₀ がしきい値以下なら即時）</p>
+  <p><strong>半減期は「物理」と「実効」の両方で計算し、併記</strong>します（実効＝早め・実用／物理＝遅め・保守）。</p>
+
+  <h2><span class="n">2</span>採用する定数（承認対象）</h2>
+  <div class="twrap"><table>
+    <thead><tr><th>項目</th><th>プルヴィクト（Lu-177 PSMA-617）</th><th>ルタテラ（Lu-177 DOTATATE）</th><th>根拠・出典</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>物理半減期</strong></td>
+        <td class="fixed">6.647 日（確定）</td>
+        <td class="fixed">6.647 日（確定）</td>
+        <td>Lu-177 の物理的半減期</td>
+      </tr>
+      <tr>
+        <td><strong>実効半減期<br>（採用値を記入）</strong></td>
+        <td>採用値：<span class="fill">〔　　　〕時間</span><br><span style="color:var(--soft)">文献候補：約40時間（21.7〜85.7h）／別報告 約34h</span></td>
+        <td>採用値：<span class="fill">〔　　　〕時間</span><br><span style="color:var(--soft)">文献候補：約34時間（1.40日）／終末相 約71h</span></td>
+        <td>下記【出典】参照。薬剤ごとに異なるため個別に採用</td>
+      </tr>
+      <tr>
+        <td><strong>退出しきい値<br>（1m）</strong></td>
+        <td class="fixed">16 µSv/h</td>
+        <td class="fixed">18 µSv/h</td>
+        <td>各ガイドラインにより決定済み<br>（準拠ガイドライン名：<span class="fill">〔　　　　　〕</span>）</td>
+      </tr>
+      <tr>
+        <td><strong>測定条件</strong></td>
+        <td colspan="2">投与直後、体表面から1m、1回測定（退出時刻計算の初期値 D₀）</td>
+        <td>特別措置病室で減衰待機</td>
+      </tr>
+      <tr>
+        <td><strong>運用方式</strong></td>
+        <td colspan="2">予測は目安とし、退出前に実測して確認。最終的な退出可否は医師が判断</td>
+        <td>安全側運用</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <div class="note warn">
+    <div class="lbl">実効半減期の採用にあたっての留意（記録）</div>
+    Lu-177治療後の外部線量率の減衰は<strong>2段階（前半＝腎排泄で急、後半＝物理に近い緩やか）</strong>であり、単一指数の実効半減期は近似である。<strong>投与直後の1回測定では生物学的半減期は個人差（排尿状況）が大きく特定できない</strong>ため、生物学的半減期の逆算は行わず、文献の実効半減期を採用する。予測が非保守側に振れうる点を踏まえ、<strong>物理半減期による保守側の値も併記</strong>し、<strong>退出前の実測で確認</strong>する運用とする。
+
+  </div>
+
+  <h2><span class="n">3</span>実効半減期の文献【出典】</h2>
+  <ul>
+    <li>Lu-177 PSMA 実効半減期・被ばく：EJNMMI Research (2018) 8:36
+      <a href="https://ejnmmires.springeropen.com/articles/10.1186/s13550-018-0386-4">https://ejnmmires.springeropen.com/articles/10.1186/s13550-018-0386-4</a></li>
+    <li>177Lu-based therapy 実効半減期と公衆線量（多施設解析）：PubMed 41610875
+      <a href="https://pubmed.ncbi.nlm.nih.gov/41610875/">https://pubmed.ncbi.nlm.nih.gov/41610875/</a></li>
+    <li>Lu-177 DOTATATE 外部線量率と実効半減期：PubMed 21719263
+      <a href="https://pubmed.ncbi.nlm.nih.gov/21719263/">https://pubmed.ncbi.nlm.nih.gov/21719263/</a></li>
+    <li>Lu-177 DOTATATE 退出後の外部線量率の減衰：PMC8176171
+      <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8176171/">https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8176171/</a></li>
+  </ul>
+  <p style="color:var(--soft);font-size:12px">※ 出典・採用値は、貴院で入手可能な最新のガイドライン・文献に基づき、承認者の判断で確定・追記してください。</p>
+
+  <h2><span class="n">4</span>承認</h2>
+  <p>上記の定数および運用方式を、放射線安全管理の責任者として決定・承認します。</p>
+  <div class="sign"><div class="twrap"><table>
+    <thead><tr><th>承認者（放射線安全管理責任者）</th><th>資格</th><th>承認日</th><th>署名・押印</th></tr></thead>
+    <tbody><tr>
+      <td>氏名：〔　　　　　　　〕</td>
+      <td>第1種放射線取扱主任者</td>
+      <td>〔　　年　　月　　日〕</td>
+      <td></td>
+    </tr></tbody>
+  </table></div></div>
+
+  <footer>Lu-177 退出基準到達時間 算出ツール 定数 決定・承認記録シート／院内配布・印刷・PDF保存が可能です。</footer>
+
+</div>
+</body>
+</html>
