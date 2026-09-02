@@ -65,7 +65,7 @@
     <tbody>
       <tr><th>形態</th><td><strong>オフライン単一ファイル（HTML）</strong>。ブラウザで開くだけ。インストール不要。</td></tr>
       <tr><th>通信</th><td><strong>外部・院内網へ一切通信しない</strong>（CDN等の外部読込もなし＝完全自己完結）。</td></tr>
-      <tr><th>個人情報</th><td><strong>患者氏名を扱わない</strong>。患者ID（任意）・測定値・時刻のみ。個人情報の保有を最小化。</td></tr>
+      <tr><th>個人情報</th><td>患者ID・<strong>患者名（いずれも任意）</strong>・測定値・時刻。記録用に患者名を任意入力できる。データは端末内に保存され外部へ送信しない。院内の取扱規定に従う。</td></tr>
       <tr><th>保守性</th><td>1ファイルのため<strong>差し替えで更新</strong>。ソース（テキスト）を確認可能。</td></tr>
       <tr><th>記録</th><td>計算結果を端末内に保存（ブラウザ内）＋<strong>CSV書き出し・印刷</strong>。</td></tr>
     </tbody>
@@ -75,7 +75,8 @@
   <div class="twrap"><table>
     <thead><tr><th>項目</th><th>形式</th><th>備考</th></tr></thead>
     <tbody>
-      <tr><td>患者ID（任意）</td><td>テキスト</td><td>氏名は入力しない</td></tr>
+      <tr><td>患者ID（任意）</td><td>テキスト</td><td>記録の識別用</td></tr>
+      <tr><td>患者名（任意）</td><td>テキスト</td><td>記録用に任意入力</td></tr>
       <tr><td>薬剤</td><td>選択（プルヴィクト／ルタテラ）</td><td>選択でしきい値・実効半減期が自動決定</td></tr>
       <tr><td>投与日時</td><td>日時</td><td>予測日時の起点</td></tr>
       <tr><td>投与直後の1m線量率 D₀</td><td>数値（µSv/h）</td><td>体表面から1m・投与直後の1回測定</td></tr>

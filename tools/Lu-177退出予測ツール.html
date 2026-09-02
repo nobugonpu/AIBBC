@@ -76,9 +76,15 @@
     <div class="card">
       <div class="row">
         <div>
-          <label>患者ID（任意・氏名は入力しない）</label>
+          <label>患者ID（任意）</label>
           <input id="pid" type="text" placeholder="例：P-001">
         </div>
+        <div>
+          <label>患者名（任意）</label>
+          <input id="pname" type="text" placeholder="例：山田 太郎">
+        </div>
+      </div>
+      <div class="row">
         <div>
           <label>薬剤</label>
           <select id="drug">
@@ -86,16 +92,17 @@
             <option value="lutathera">ルタテラ（Lu-177 DOTATATE）</option>
           </select>
         </div>
-      </div>
-      <div class="row">
         <div>
           <label>投与日時</label>
           <input id="admin" type="datetime-local">
         </div>
+      </div>
+      <div class="row">
         <div>
           <label>投与直後の1m線量率 D₀（µSv/h）</label>
           <input id="d0" type="number" step="0.1" min="0" placeholder="例：30">
         </div>
+        <div></div>
       </div>
       <div class="err" id="err"></div>
       <button class="btn" id="calcBtn">退院見込みを計算</button>
@@ -121,7 +128,7 @@
       <div style="overflow-x:auto">
         <table id="logTbl">
           <thead><tr>
-            <th>計算日時</th><th>患者ID</th><th>薬剤</th><th>投与日時</th><th>D₀</th>
+            <th>計算日時</th><th>患者ID</th><th>患者名</th><th>薬剤</th><th>投与日時</th><th>D₀</th>
             <th>予測（最短・実効）</th><th>予測（最長・物理）</th>
           </tr></thead>
           <tbody></tbody>
@@ -228,7 +235,7 @@ $("calcBtn").addEventListener("click", () => {
   const immediate = d0 <= drug.threshold;
 
   lastResult = {
-    calcAt: new Date(), pid: $("pid").value.trim(), drug: drug.name,
+    calcAt: new Date(), pid: $("pid").value.trim(), pname: $("pname").value.trim(), drug: drug.name,
     adminDate, d0, threshold: drug.threshold,
     dEff, dPhys,
     relEff: addDays(adminDate, dEff), relPhys: addDays(adminDate, dPhys),
@@ -252,7 +259,8 @@ function renderResult(r, drug){
       + '</div>';
   }
   html += '<div class="meta">投与日時：'+fmtDateTime(r.adminDate)+'　／　D₀：'+r.d0+' µSv/h'
-        + (r.pid ? '　／　患者ID：'+escapeHtml(r.pid) : '') + '</div>';
+        + (r.pid ? '　／　患者ID：'+escapeHtml(r.pid) : '')
+        + (r.pname ? '　／　患者名：'+escapeHtml(r.pname) : '') + '</div>';
   html += '<div class="warn">これは<strong>予測（目安）</strong>です。実際は排尿状況等で個人差が大きいため、'
         + '<strong>退出前に必ず実測</strong>し、最終的な退出可否は<strong>医師の判断</strong>で確定してください。</div>';
   $("rbody").innerHTML = html;
@@ -267,7 +275,7 @@ $("saveBtn").addEventListener("click", () => {
   const log = loadLog();
   log.unshift({
     calcAt: fmtDateTime(lastResult.calcAt),
-    pid: lastResult.pid, drug: lastResult.drug,
+    pid: lastResult.pid, pname: lastResult.pname, drug: lastResult.drug,
     admin: fmtDateTime(lastResult.adminDate),
     d0: lastResult.d0,
     relEff: lastResult.immediate ? "即時" : fmtDateTime(lastResult.relEff),
@@ -288,7 +296,7 @@ function renderLog(){
   $("logEmpty").style.display = log.length ? "none" : "block";
   log.forEach(r => {
     const tr = document.createElement("tr");
-    [r.calcAt, r.pid||"—", r.drug, r.admin, r.d0, r.relEff, r.relPhys].forEach(v => {
+    [r.calcAt, r.pid||"—", r.pname||"—", r.drug, r.admin, r.d0, r.relEff, r.relPhys].forEach(v => {
       const td = document.createElement("td"); td.textContent = v; tr.appendChild(td);
     });
     tb.appendChild(tr);
@@ -297,8 +305,8 @@ function renderLog(){
 
 $("csvBtn").addEventListener("click", () => {
   const log = loadLog();
-  const header = ["計算日時","患者ID","薬剤","投与日時","D0(uSv/h)","予測_最短_実効","予測_最長_物理"];
-  const rows = log.map(r => [r.calcAt, r.pid, r.drug, r.admin, r.d0, r.relEff, r.relPhys]);
+  const header = ["計算日時","患者ID","患者名","薬剤","投与日時","D0(uSv/h)","予測_最短_実効","予測_最長_物理"];
+  const rows = log.map(r => [r.calcAt, r.pid, r.pname, r.drug, r.admin, r.d0, r.relEff, r.relPhys]);
   let csv = "﻿" + header.join(",") + "\n"
     + rows.map(row => row.map(c => {
         const s = String(c==null?"":c);
