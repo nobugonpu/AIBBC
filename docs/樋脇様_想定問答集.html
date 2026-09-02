@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>オフライン運用 想定問答集</title>
+<title>指定端末への設置 想定問答集</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
 <style>
@@ -48,8 +48,8 @@
 
   <header class="mast">
     <span class="eyebrow">RI室 内部資料 ／ 説明準備用</span>
-    <h1>オフライン運用に関する 想定問答集</h1>
-    <div class="meta">Lu-177治療スケジューラ／メール端末上でのオフライン（通信なし）運用の検討にあたって</div>
+    <h1>指定端末への設置に関する 想定問答集</h1>
+    <div class="meta">Lu-177治療スケジューラ／既存アプリを指定端末（ネット端末）に設置して運用する案の検討にあたって</div>
   </header>
 
   <p>医療情報部（樋脇係長）や委員会から想定される質問と、その回答例をまとめました。<strong>回答例はたたき台</strong>です。院の実情に合わせて調整してご使用ください。</p>
@@ -62,8 +62,8 @@
   <h2><span class="n">1</span>最重要：データ共有について</h2>
 
   <div class="qa">
-    <div class="q"><span class="badge">Q1</span>オフライン運用では、複数メンバーでどうやってデータを共有するのか？</div>
-    <div class="a"><span class="badge">A</span>完全な同時共有はオフライン単体では困難です。現実的には次の3案があり、<span class="rec">当面は案1を推奨</span>します。</div>
+    <div class="q"><span class="badge">Q1</span>指定端末に設置する形では、複数メンバーでどうやってデータを共有するのか？</div>
+    <div class="a"><span class="badge">A</span>データは端末内に保存されるため、完全な同時共有は単体では困難です。現実的には次の3案があり、<span class="rec">当面は案1を推奨</span>します。</div>
     <div class="twrap"><table>
       <thead><tr><th>案</th><th>やり方</th><th>長所</th><th>短所</th></tr></thead>
       <tbody>
@@ -76,61 +76,66 @@
 
   <div class="qa">
     <div class="q"><span class="badge">Q2</span>データはどこに保存される？端末を変えたら消えるのか？</div>
-    <div class="a"><span class="badge">A</span>オフラインの場合、データは<strong>その端末（ブラウザ）内に保存</strong>され、別端末・別ブラウザとは共有されません。だからこそ「親機1台方式」が管理しやすくなります。消失に備え、<strong>定期的にデータを書き出しファイルとして保存</strong>します。</div>
+    <div class="a"><span class="badge">A</span>データは<strong>設置した端末内に暗号化して保存</strong>され、別端末とは共有されません。だからこそ「親機1台方式」が管理しやすくなります。消失に備え、<strong>定期的にデータを書き出しファイルとして保存</strong>します。</div>
   </div>
 
   <div class="qa">
     <div class="q"><span class="badge">Q3</span>バックアップ・データ消失対策は？</div>
-    <div class="a"><span class="badge">A</span>親機端末で<strong>定期的にデータを書き出し</strong>、許可された保存場所に保管します。端末故障やブラウザ初期化に備えます。頻度（例：週1回、締切ごと）は運用規程で定めます。</div>
+    <div class="a"><span class="badge">A</span>親機端末で<strong>定期的にデータを書き出し</strong>、許可された保存場所に保管します。端末故障や再セットアップに備えます。頻度（例：週1回、締切ごと）は運用規程で定めます。</div>
   </div>
 
   <h2><span class="n">2</span>セキュリティ・データ保護</h2>
 
   <div class="qa">
-    <div class="q"><span class="badge">Q4</span>患者情報が外部に漏れる心配はないか？</div>
-    <div class="a"><span class="badge">A</span><strong>インターネット・院内網に一切通信しません（完全オフライン）。</strong>保存データは暗号化します。保存場所は情報部のご指示に従います。さらに、<strong>患者氏名を持たず患者ID中心で運用</strong>することも可能で、その場合は個人情報の保有そのものを最小化できます。</div>
+    <div class="q"><span class="badge">Q4</span>ネット端末に設置しても、患者情報が外部に漏れる心配はないか？</div>
+    <div class="a"><span class="badge">A</span>本アプリは<strong>インターネット・院内網へ一切通信しません</strong>。ネット端末に置いても、<strong>アプリ経由で患者データが外部へ出ることはありません</strong>（新たな通信経路を作りません）。保存データは<strong>AES-256で暗号化</strong>し、<strong>利用者ごとの個人アカウント</strong>でログインします。さらに<strong>患者氏名を持たず患者ID中心で運用</strong>することも可能で、個人情報の保有を最小化できます。</div>
   </div>
 
   <div class="qa">
-    <div class="q"><span class="badge">Q5</span>マクロ（VBA）は使うのか？（Accessで問題になった点）</div>
-    <div class="a"><span class="badge">A</span><strong>使いません。</strong>オフラインHTMLはブラウザの標準機能のみで動作し、マクロ実行を伴いません。Accessで懸念されたマクロ制限には該当しません。</div>
+    <div class="q"><span class="badge">Q5</span>そもそも「ネット端末」に患者データを置いてよいのか？</div>
+    <div class="a"><span class="badge">A</span>アプリ側の対策は上記のとおり（外部通信なし・暗号化・個人認証）です。そのうえで、<strong>設置は指定端末1〜2台に限定</strong>し、端末自体のセキュリティ（ウイルス対策等）は<strong>情報部の既存管理に準拠</strong>します。<strong>「ネット端末で差し支えないか、別の指定端末が望ましいか」は情報部のご判断に委ねます</strong>（無理に押し通しません）。</div>
   </div>
 
   <div class="qa">
-    <div class="q"><span class="badge">Q6</span>HTMLファイルの改ざん・マルウェアのリスクは？</div>
-    <div class="a"><span class="badge">A</span>ファイルの中身は<strong>情報部でレビュー（内容確認）可能</strong>です。動作はブラウザ内に限られ、外部通信は行いません。配置場所と変更管理（誰がいつ更新したか）を規程化し、正規のファイルのみを使用します。</div>
+    <div class="q"><span class="badge">Q6</span>マクロ（VBA）は使うのか？（Accessで問題になった点）</div>
+    <div class="a"><span class="badge">A</span><strong>使いません。</strong>本アプリはOfficeのマクロを一切使用しないため、Accessで懸念されたマクロ制限には該当しません。</div>
+  </div>
+
+  <div class="qa">
+    <div class="q"><span class="badge">Q7</span>アプリ（実行ファイル）の改ざん・マルウェアのリスクは？</div>
+    <div class="a"><span class="badge">A</span><strong>ソースコードは情報部でレビュー（内容確認）・再ビルド可能</strong>で、挙動を隠しません。動作は端末内に限られ、外部通信は行いません。配布方法・配置場所・変更管理（誰がいつ更新したか）を規程化し、正規のファイルのみを使用します。</div>
   </div>
 
   <h2><span class="n">3</span>可用性・保守・体制</h2>
 
   <div class="qa">
-    <div class="q"><span class="badge">Q7</span>誰が保守するのか？属人化しないか？</div>
-    <div class="a"><span class="badge">A</span><strong>単一のHTMLファイル</strong>で構造が単純なため、ExcelやAccessよりむしろ保守は容易です（更新は<strong>ファイル1つの差し替え</strong>）。ソース公開・手順書・<strong>責任者／副責任者の二名体制</strong>で属人化を排除します。</div>
+    <div class="q"><span class="badge">Q8</span>誰が保守するのか？属人化しないか？</div>
+    <div class="a"><span class="badge">A</span><strong>更新はインストーラ1つの差し替え（ユーザー単位）</strong>で済み、構造も単純です。ソース公開・手順書・<strong>責任者／副責任者の二名体制</strong>で属人化を排除します。</div>
   </div>
 
   <div class="qa">
-    <div class="q"><span class="badge">Q8</span>なぜメール端末なのか。他の端末ではだめか？</div>
-    <div class="a"><span class="badge">A</span>現場で使えてブラウザが利用できる端末として想定しています。どの端末を使うか（親機の指定を含む）は、情報部とご相談のうえ決定したいと考えています。</div>
+    <div class="q"><span class="badge">Q9</span>どの端末に設置するのか。台数は？</div>
+    <div class="a"><span class="badge">A</span>RI室が使用する<strong>指定端末1〜2台に限定</strong>して設置します。どの端末を使うか（親機の指定を含む）は、情報部とご相談のうえ決定したいと考えています。</div>
   </div>
 
   <h2><span class="n">4</span>承認プロセス・位置づけ</h2>
 
   <div class="qa">
-    <div class="q"><span class="badge">Q9</span>独自ツールの業務利用は原則不可では？</div>
-    <div class="a"><span class="badge">A</span>承知しております。まずは<strong>技術的にリスクが最も小さい形</strong>（オフライン・通信なし・単一ファイル・マクロなし）を確定したうえで、<strong>医療情報管理運営委員会</strong>にお諮りいただくことを前提としています。正式システムが調達されるまでの暫定運用という位置づけです。</div>
+    <div class="q"><span class="badge">Q10</span>独自ツールの業務利用は原則不可では？</div>
+    <div class="a"><span class="badge">A</span>承知しております。まずは<strong>技術的にリスクが最も小さい形</strong>（外部通信なし・暗号化・個人認証・マクロなし・設置台数限定）を確定したうえで、<strong>医療情報管理運営委員会</strong>にお諮りいただくことを前提としています。正式システムが調達されるまでの暫定運用という位置づけです。</div>
   </div>
 
   <div class="qa">
-    <div class="q"><span class="badge">Q10</span>委員会には何を提出するのか？</div>
+    <div class="q"><span class="badge">Q11</span>委員会には何を提出するのか？</div>
     <div class="a"><span class="badge">A</span><strong>改修要件定義書・セキュリティ設計書・本ツールのソース</strong>を提出します。責任体制（管理主体・責任者）と運用規程もあわせて整備します。</div>
   </div>
 
   <div class="note warn">
     <div class="lbl">正直にお伝えすべき点（先に述べておくと信頼されます）</div>
-    オフライン単体では<strong>「リアルタイムの多人数同時共有」はできません</strong>。この制約を隠さず、「当面は親機1台＋印刷共有で運用し、本格的な共有は正式システムで」と明確にすることが、委員会・情報部の理解を得る近道です。
+    端末内保存の単体運用では<strong>「リアルタイムの多人数同時共有」はできません</strong>。この制約を隠さず、「当面は親機1台＋印刷共有で運用し、本格的な共有は正式システムで」と明確にすることが、委員会・情報部の理解を得る近道です。
   </div>
 
-  <footer>Lu-177治療スケジューラ オフライン運用 想定問答集（RI室 内部資料）／院内配布・印刷・PDF保存が可能です。</footer>
+  <footer>Lu-177治療スケジューラ 指定端末への設置 想定問答集（RI室 内部資料）／院内配布・印刷・PDF保存が可能です。</footer>
 
 </div>
 </body>
