@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>退出基準到達時間 予測ツール 設計書（原案）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+  :root{--bg:#f5f8fc;--surface:#fff;--surface-2:#eef3f9;--ink:#16202e;--soft:#55647c;--faint:#8a99b0;
+    --border:#e2e9f1;--blue:#1f5fbf;--blue-bg:#eef4ff;--green:#0f9d6e;--green-bg:#eafaf3;--green-ink:#0a6b4b;
+    --amber:#b45309;--amber-bg:#fff7ea;--amber-line:#f0c680;--red:#c02626;--shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);}
+  @media(prefers-color-scheme:dark){:root{--bg:#0d1420;--surface:#151d2b;--surface-2:#1c2637;--ink:#e7edf6;--soft:#a7b4c9;
+    --faint:#6c7b93;--border:#263143;--blue:#6b9bff;--blue-bg:#16233c;--green:#35d39c;--green-bg:#10281f;--green-ink:#86efc5;
+    --amber:#f6be5f;--amber-bg:#2a2012;--amber-line:#5a4520;--red:#f78a8a;}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;font-size:14px;line-height:1.68}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px 56px}
+  header.mast{padding:30px 0 14px;border-bottom:3px solid var(--blue);margin-bottom:12px}
+  .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.09em;color:var(--blue);background:var(--blue-bg);padding:4px 12px;border-radius:999px;display:inline-block}
+  header.mast h1{font-size:clamp(20px,3vw,27px);font-weight:700;margin:12px 0 4px}
+  header.mast .meta{color:var(--soft);font-size:13px}
+  h2{font-size:16.5px;font-weight:700;margin:24px 0 9px;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;gap:9px;align-items:center}
+  h2 .n{font-size:12px;color:#fff;background:var(--blue);min-width:23px;height:23px;border-radius:6px;display:inline-grid;place-items:center;font-weight:700}
+  h3{font-size:14.5px;font-weight:700;margin:14px 0 5px}
+  p{margin:8px 0} ul,ol{margin:8px 0;padding-left:22px} li{margin:4px 0}
+  code{font-family:Consolas,monospace;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:.92em}
+  .twrap{overflow-x:auto;margin:10px 0;border:1px solid var(--border);border-radius:10px}
+  table{width:100%;border-collapse:collapse;font-size:12.8px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+  thead th{background:var(--surface-2);color:var(--soft);font-weight:700;white-space:nowrap}
+  tbody tr:last-child td{border-bottom:none}
+  .note{border-radius:9px;padding:11px 14px;margin:12px 0;border:1px solid var(--border);font-size:12.8px}
+  .note.tip{background:var(--blue-bg);border-color:color-mix(in srgb,var(--blue) 30%,transparent)}
+  .note.warn{background:var(--amber-bg);border-color:var(--amber-line);color:var(--amber)}
+  .note.crit{background:#fdf0f0;border-color:#f2b6b6;color:var(--red)}
+  .note .lbl{font-weight:700;margin-bottom:2px}
+  footer{margin-top:26px;padding-top:14px;border-top:1px solid var(--border);color:var(--faint);font-size:11.5px;text-align:center}
+  @media print{body{background:#fff;color:#000;font-size:10pt}.wrap{max-width:none;padding:0}.note,.twrap{page-break-inside:avoid}h2{page-break-after:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <span class="eyebrow">設計書（原案）／ RI室</span>
+    <h1>Lu-177 退出基準到達時間 予測ツール 設計書（原案）</h1>
+    <div class="meta">版：0.1（原案）／作成：RI室 新留 信幸／定数の承認：別紙「定数 決定・承認記録シート」参照</div>
+  </header>
+
+  <div class="note crit">
+    <div class="lbl">最重要：本ツールの位置づけ</div>
+    本ツールは、特別措置病室に入院中の患者について<strong>退院（退出）可能となる日を「予測（見込み）」する補助ツール</strong>です。<strong>最終的な退出可否は、退出前の実測および医師の判断により確定</strong>します。本ツールの数値のみで退出を決定しません。
+  </div>
+
+  <h2><span class="n">1</span>目的・利用場面</h2>
+  <ul>
+    <li>投与直後に測定した体表面から1mの線量率（D₀）を初期値として、<strong>退出しきい値に達する日時を予測</strong>する。</li>
+    <li>用途：<strong>退院見込みの目処づけ・病床計画・患者/家族への説明・スケジュール調整</strong>。</li>
+    <li>利用者：RI室スタッフ。1台の指定端末で使用（親機1台方式）。</li>
+  </ul>
+
+  <h2><span class="n">2</span>形態・非機能要件</h2>
+  <div class="twrap"><table>
+    <tbody>
+      <tr><th>形態</th><td><strong>オフライン単一ファイル（HTML）</strong>。ブラウザで開くだけ。インストール不要。</td></tr>
+      <tr><th>通信</th><td><strong>外部・院内網へ一切通信しない</strong>（CDN等の外部読込もなし＝完全自己完結）。</td></tr>
+      <tr><th>個人情報</th><td><strong>患者氏名を扱わない</strong>。患者ID（任意）・測定値・時刻のみ。個人情報の保有を最小化。</td></tr>
+      <tr><th>保守性</th><td>1ファイルのため<strong>差し替えで更新</strong>。ソース（テキスト）を確認可能。</td></tr>
+      <tr><th>記録</th><td>計算結果を端末内に保存（ブラウザ内）＋<strong>CSV書き出し・印刷</strong>。</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2><span class="n">3</span>入力項目</h2>
+  <div class="twrap"><table>
+    <thead><tr><th>項目</th><th>形式</th><th>備考</th></tr></thead>
+    <tbody>
+      <tr><td>患者ID（任意）</td><td>テキスト</td><td>氏名は入力しない</td></tr>
+      <tr><td>薬剤</td><td>選択（プルヴィクト／ルタテラ）</td><td>選択でしきい値・実効半減期が自動決定</td></tr>
+      <tr><td>投与日時</td><td>日時</td><td>予測日時の起点</td></tr>
+      <tr><td>投与直後の1m線量率 D₀</td><td>数値（µSv/h）</td><td>体表面から1m・投与直後の1回測定</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2><span class="n">4</span>使用する定数（承認済み／別紙参照）</h2>
+  <div class="twrap"><table>
+    <thead><tr><th>定数</th><th>プルヴィクト</th><th>ルタテラ</th></tr></thead>
+    <tbody>
+      <tr><td>物理半減期</td><td>6.647 日</td><td>6.647 日</td></tr>
+      <tr><td>実効半減期（承認値）</td><td>40 時間</td><td>34 時間</td></tr>
+      <tr><td>退出しきい値（1m）</td><td>16 µSv/h</td><td>18 µSv/h</td></tr>
+    </tbody>
+  </table></div>
+  <p style="color:var(--soft);font-size:12px">定数は画面と記録に明示。変更時は承認記録シートの再承認を要する（画面上では変更不可）。</p>
+
+  <h2><span class="n">5</span>計算仕様</h2>
+  <p>単一指数減衰を仮定し、<strong>実効半減期・物理半減期の両方</strong>で算出する。</p>
+  <p><code>到達まで（日）＝ (半減期 ÷ ln2) × ln( D₀ ÷ しきい値 )</code></p>
+  <ul>
+    <li>D₀ ≤ しきい値 の場合は「即時（0）」。</li>
+    <li>退出可能（予測）日時 ＝ 投与日時 ＋ 到達まで。</li>
+    <li><strong>実効ベース＝最短の見込み／物理ベース＝最長（保守側）の見込み</strong>として<strong>幅で提示</strong>。</li>
+  </ul>
+  <div class="note warn">
+    <div class="lbl">前提と限界（記録）</div>
+    実際の線量率減衰は2段階（前半＝腎排泄で急、後半＝物理に近い緩やか）で、単一指数は近似。排尿状況の個人差が大きいため、<strong>予測は幅で捉え、退出前の実測で確認</strong>する。
+  </div>
+
+  <h2><span class="n">6</span>出力仕様</h2>
+  <ul>
+    <li>適用したしきい値・実効半減期（自動選択された値）を表示。</li>
+    <li><strong>退出可能（予測）日時：実効ベース 〜 物理ベース</strong>（幅）。それぞれ「◯日◯時間後」も併記。</li>
+    <li>「これは予測（目安）であり、最終判断は実測・医師による」旨を常時明示。</li>
+    <li>入力チェック：数値・日時の妥当性、D₀がしきい値以下なら即時表示。</li>
+  </ul>
+
+  <h2><span class="n">7</span>記録・印刷</h2>
+  <ul>
+    <li>計算実行時に、日時・患者ID・薬剤・D₀・予測結果を端末内に記録（追記）。</li>
+    <li>記録一覧の<strong>CSV書き出し</strong>（Excel対応）と<strong>印刷</strong>。</li>
+  </ul>
+
+  <h2><span class="n">8</span>画面構成</h2>
+  <ol>
+    <li><strong>計算画面</strong>：入力欄（薬剤・投与日時・D₀・患者ID）→ 結果（実効/物理の予測日時、幅）。</li>
+    <li><strong>記録一覧</strong>：過去の計算履歴、CSV書き出し・印刷。</li>
+    <li><strong>設定・根拠</strong>：使用中の定数と出典、承認情報の表示（変更不可）。</li>
+  </ol>
+
+  <h2><span class="n">9</span>モジュール構成（故障しにくく・検証しやすく）</h2>
+  <ul>
+    <li><strong>計算エンジン</strong>（純粋関数）：入力値だけで予測日時を返す。既知の検算表と照合してテスト。</li>
+    <li><strong>定数</strong>：1か所に集約（承認値）。画面から変更不可。</li>
+    <li><strong>入力チェック</strong>：範囲・単位・日時。</li>
+    <li><strong>表示・記録・印刷</strong>：計算エンジンから分離。</li>
+  </ul>
+
+  <h2><span class="n">10</span>制約・免責</h2>
+  <ul>
+    <li>医療機器ではなく、退出の予測・記録の補助ツール。</li>
+    <li>予測は近似であり、<strong>実測・医師判断を代替しない</strong>。</li>
+    <li>定数・運用は別紙承認記録シートに従う。</li>
+  </ul>
+
+  <h2><span class="n">11</span>今後の進め方</h2>
+  <ol>
+    <li>本原案の確認・承認。</li>
+    <li>計算エンジンの実装＋検算表での確認。</li>
+    <li>画面・記録・印刷の実装（オフライン単一HTML）。</li>
+    <li>試用（少数の実データで実測と比較）→ 運用へ。</li>
+  </ol>
+
+  <footer>Lu-177 退出基準到達時間 予測ツール 設計書（原案）／RI室 内部資料／院内配布・印刷・PDF保存が可能です。</footer>
+
+</div>
+</body>
+</html>

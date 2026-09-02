@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lu-177 退出基準到達時間 予測ツール</title>
+<style>
+  :root{--bg:#f5f8fc;--surface:#fff;--surface-2:#eef3f9;--ink:#16202e;--soft:#55647c;--faint:#8a99b0;
+    --border:#dce4ee;--blue:#1f5fbf;--blue-bg:#eef4ff;--green:#0f9d6e;--green-bg:#eafaf3;--green-ink:#0a6b4b;
+    --amber:#b45309;--amber-bg:#fff7ea;--amber-line:#f0c680;--red:#c02626;--red-bg:#fdf0f0;--yellow:#fff6cc;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Yu Gothic","Hiragino Sans","Meiryo",sans-serif;font-size:15px;line-height:1.6}
+  .wrap{max-width:820px;margin:0 auto;padding:0 18px 60px}
+  header{padding:22px 0 14px;border-bottom:3px solid var(--blue);margin-bottom:16px}
+  header h1{font-size:22px;margin:0 0 4px}
+  header .sub{color:var(--soft);font-size:13px}
+  .crit{background:var(--red-bg);border:1px solid #f2b6b6;color:var(--red);border-radius:9px;padding:10px 14px;font-size:13px;margin:12px 0}
+  .tabs{display:flex;gap:6px;margin:14px 0}
+  .tabs button{flex:1;padding:9px 8px;border:1px solid var(--border);background:var(--surface);border-radius:9px;font-weight:700;cursor:pointer;font-size:14px;color:var(--soft)}
+  .tabs button.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 8px 20px rgba(16,24,40,.05);margin-bottom:16px}
+  label{display:block;font-size:13px;font-weight:700;margin:12px 0 4px}
+  input,select{width:100%;padding:10px 12px;border:1px solid #c9d4e2;border-radius:9px;font-size:15px;background:var(--yellow)}
+  input:focus,select:focus{outline:2px solid var(--blue);outline-offset:0}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:560px){.row{grid-template-columns:1fr}}
+  .btn{margin-top:16px;padding:11px 18px;border:none;border-radius:9px;background:var(--blue);color:#fff;font-weight:700;font-size:15px;cursor:pointer}
+  .btn.sub{background:var(--surface-2);color:var(--ink);border:1px solid var(--border)}
+  .result{margin-top:16px;border-radius:12px;border:1px solid var(--border);overflow:hidden;display:none}
+  .result.show{display:block}
+  .result .head{background:var(--blue-bg);padding:12px 16px;font-weight:700;color:var(--blue)}
+  .result .body{padding:14px 16px}
+  .range{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0}
+  @media(max-width:560px){.range{grid-template-columns:1fr}}
+  .range .box{border:1px solid var(--border);border-radius:10px;padding:12px}
+  .range .box.min{background:var(--green-bg);border-color:#a7e3cd}
+  .range .box.max{background:var(--amber-bg);border-color:var(--amber-line)}
+  .range .box .k{font-size:12px;color:var(--soft);font-weight:700}
+  .range .box .v{font-size:19px;font-weight:700;margin-top:3px}
+  .range .box.min .v{color:var(--green-ink)}
+  .range .box.max .v{color:var(--amber)}
+  .range .box .s{font-size:12px;color:var(--soft);margin-top:2px}
+  .imm{background:var(--green-bg);color:var(--green-ink);border:1px solid #a7e3cd;border-radius:10px;padding:12px;font-weight:700;text-align:center}
+  .meta{font-size:12.5px;color:var(--soft);margin-top:8px}
+  .warn{background:var(--amber-bg);border:1px solid var(--amber-line);color:var(--amber);border-radius:8px;padding:9px 12px;font-size:12.5px;margin-top:10px}
+  .err{background:var(--red-bg);border:1px solid #f2b6b6;color:var(--red);border-radius:8px;padding:9px 12px;font-size:13px;margin-top:10px;display:none}
+  .err.show{display:block}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border)}
+  thead th{background:var(--surface-2);color:var(--soft);font-size:12px;white-space:nowrap}
+  .muted{color:var(--soft);font-size:12.5px}
+  .pane{display:none}.pane.active{display:block}
+  .const-tbl td:first-child{font-weight:700;white-space:nowrap}
+  @media print{.tabs,.btn,header{ }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Lu-177 退出基準到達時間 予測ツール</h1>
+    <div class="sub">特別措置病室に入院中の患者の「退院可能日」を予測（見込み）します</div>
+  </header>
+
+  <div class="crit">
+    ⚠ 本ツールの結果は<strong>予測（目安）</strong>です。<strong>最終的な退出可否は、退出前の実測および医師の判断</strong>で確定してください。
+  </div>
+
+  <div class="tabs">
+    <button data-tab="calc" class="active">計算</button>
+    <button data-tab="log">記録</button>
+    <button data-tab="about">定数・根拠</button>
+  </div>
+
+  <!-- 計算 -->
+  <div class="pane active" id="pane-calc">
+    <div class="card">
+      <div class="row">
+        <div>
+          <label>患者ID（任意・氏名は入力しない）</label>
+          <input id="pid" type="text" placeholder="例：P-001">
+        </div>
+        <div>
+          <label>薬剤</label>
+          <select id="drug">
+            <option value="pluvicto">プルヴィクト（Lu-177 PSMA-617）</option>
+            <option value="lutathera">ルタテラ（Lu-177 DOTATATE）</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>投与日時</label>
+          <input id="admin" type="datetime-local">
+        </div>
+        <div>
+          <label>投与直後の1m線量率 D₀（µSv/h）</label>
+          <input id="d0" type="number" step="0.1" min="0" placeholder="例：30">
+        </div>
+      </div>
+      <div class="err" id="err"></div>
+      <button class="btn" id="calcBtn">退院見込みを計算</button>
+      <button class="btn sub" id="saveBtn" style="display:none">この結果を記録に保存</button>
+
+      <div class="result" id="result">
+        <div class="head" id="rhead"></div>
+        <div class="body" id="rbody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 記録 -->
+  <div class="pane" id="pane-log">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong>計算記録</strong>
+        <span>
+          <button class="btn sub" id="csvBtn" style="margin:0 6px 0 0;padding:7px 12px;font-size:13px">CSVで保存</button>
+          <button class="btn sub" id="printBtn" style="margin:0;padding:7px 12px;font-size:13px">印刷</button>
+        </span>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="logTbl">
+          <thead><tr>
+            <th>計算日時</th><th>患者ID</th><th>薬剤</th><th>投与日時</th><th>D₀</th>
+            <th>予測（最短・実効）</th><th>予測（最長・物理）</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="muted" id="logEmpty">まだ記録がありません。</p>
+      <p class="muted">※ 記録はこの端末（ブラウザ）内にのみ保存されます。定期的にCSVで書き出してください。</p>
+    </div>
+  </div>
+
+  <!-- 定数 -->
+  <div class="pane" id="pane-about">
+    <div class="card">
+      <strong>使用中の定数（承認済み・変更不可）</strong>
+      <div style="overflow-x:auto;margin-top:8px">
+        <table class="const-tbl">
+          <thead><tr><th>定数</th><th>プルヴィクト</th><th>ルタテラ</th></tr></thead>
+          <tbody>
+            <tr><td>物理半減期</td><td>6.647 日</td><td>6.647 日</td></tr>
+            <tr><td>実効半減期（承認値）</td><td>40 時間</td><td>34 時間</td></tr>
+            <tr><td>退出しきい値（1m）</td><td>16 µSv/h</td><td>18 µSv/h</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted" style="margin-top:10px">
+        計算式：到達まで（日）＝ (半減期 ÷ ln2) × ln( D₀ ÷ しきい値 )。実効ベース＝最短の見込み、物理ベース＝最長（保守側）の見込み。<br>
+        しきい値は各ガイドラインにより決定済み。実効半減期は文献値に基づき放射線安全管理責任者が承認（別紙「定数 決定・承認記録シート」）。<br>
+        減衰は実際には2段階（前半＝腎排泄で急、後半＝緩やか）で、単一指数は近似。予測は幅で捉え、退出前の実測で確認すること。
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ===== 定数（承認値・変更不可）=====
+const DRUGS = {
+  pluvicto:  { name: "プルヴィクト", threshold: 16, teff_h: 40, tphys_d: 6.647 },
+  lutathera: { name: "ルタテラ",     threshold: 18, teff_h: 34, tphys_d: 6.647 },
+};
+const LN2 = Math.log(2);
+const LOG_KEY = "lu177_exit_log_v1";
+
+// ===== 計算エンジン（純粋関数）=====
+// 到達までの日数。D0<=thr のとき 0。到達不能な入力は NaN を返さないよう検証は呼び出し側で。
+function daysToThreshold(halfLifeDays, D0, threshold) {
+  if (D0 <= threshold) return 0;
+  return (halfLifeDays / LN2) * Math.log(D0 / threshold);
+}
+function fmtDuration(days) {
+  if (days <= 0) return "即時";
+  const totalH = days * 24;
+  const d = Math.floor(totalH / 24);
+  const h = Math.round(totalH - d * 24);
+  if (d === 0) return h + "時間";
+  return d + "日" + h + "時間";
+}
+function addDays(date, days) {
+  return new Date(date.getTime() + days * 24 * 3600 * 1000);
+}
+function fmtDateTime(date) {
+  const p = n => String(n).padStart(2, "0");
+  return date.getFullYear() + "/" + p(date.getMonth()+1) + "/" + p(date.getDate())
+       + " " + p(date.getHours()) + ":" + p(date.getMinutes());
+}
+
+// ===== UI =====
+const $ = id => document.getElementById(id);
+let lastResult = null;
+
+// タブ
+document.querySelectorAll(".tabs button").forEach(b => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".tabs button").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    document.querySelectorAll(".pane").forEach(p => p.classList.remove("active"));
+    $("pane-" + b.dataset.tab).classList.add("active");
+    if (b.dataset.tab === "log") renderLog();
+  });
+});
+
+// 投与日時の初期値＝現在
+(function initNow(){
+  const n = new Date();
+  n.setMinutes(n.getMinutes() - n.getTimezoneOffset());
+  $("admin").value = n.toISOString().slice(0,16);
+})();
+
+function showErr(msg){ const e=$("err"); e.textContent=msg; e.classList.add("show"); $("result").classList.remove("show"); $("saveBtn").style.display="none"; }
+function clearErr(){ $("err").classList.remove("show"); }
+
+$("calcBtn").addEventListener("click", () => {
+  clearErr();
+  const drug = DRUGS[$("drug").value];
+  const d0 = parseFloat($("d0").value);
+  const adminStr = $("admin").value;
+  if (!adminStr) return showErr("投与日時を入力してください。");
+  if (!isFinite(d0) || d0 < 0) return showErr("D₀（線量率）を正しく入力してください。");
+  const adminDate = new Date(adminStr);
+  if (isNaN(adminDate.getTime())) return showErr("投与日時が不正です。");
+
+  const dEff  = daysToThreshold(drug.teff_h/24, d0, drug.threshold);
+  const dPhys = daysToThreshold(drug.tphys_d,    d0, drug.threshold);
+  const immediate = d0 <= drug.threshold;
+
+  lastResult = {
+    calcAt: new Date(), pid: $("pid").value.trim(), drug: drug.name,
+    adminDate, d0, threshold: drug.threshold,
+    dEff, dPhys,
+    relEff: addDays(adminDate, dEff), relPhys: addDays(adminDate, dPhys),
+    immediate
+  };
+  renderResult(lastResult, drug);
+  $("saveBtn").style.display = "inline-block";
+});
+
+function renderResult(r, drug){
+  $("rhead").textContent = drug.name + "（しきい値 " + drug.threshold + " µSv/h）の退院見込み";
+  let html = "";
+  if (r.immediate){
+    html += '<div class="imm">D₀ がしきい値以下のため、線量率の点では即時に退出可能（予測）</div>';
+  } else {
+    html += '<div class="range">'
+      + '<div class="box min"><div class="k">最短の見込み（実効半減期 '+drug.teff_h+'h）</div>'
+      + '<div class="v">'+fmtDateTime(r.relEff)+'</div><div class="s">約 '+fmtDuration(r.dEff)+' 後</div></div>'
+      + '<div class="box max"><div class="k">最長の見込み（物理半減期 6.647日）</div>'
+      + '<div class="v">'+fmtDateTime(r.relPhys)+'</div><div class="s">約 '+fmtDuration(r.dPhys)+' 後</div></div>'
+      + '</div>';
+  }
+  html += '<div class="meta">投与日時：'+fmtDateTime(r.adminDate)+'　／　D₀：'+r.d0+' µSv/h'
+        + (r.pid ? '　／　患者ID：'+escapeHtml(r.pid) : '') + '</div>';
+  html += '<div class="warn">これは<strong>予測（目安）</strong>です。実際は排尿状況等で個人差が大きいため、'
+        + '<strong>退出前に必ず実測</strong>し、最終的な退出可否は<strong>医師の判断</strong>で確定してください。</div>';
+  $("rbody").innerHTML = html;
+  $("result").classList.add("show");
+}
+
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// 記録保存
+$("saveBtn").addEventListener("click", () => {
+  if (!lastResult) return;
+  const log = loadLog();
+  log.unshift({
+    calcAt: fmtDateTime(lastResult.calcAt),
+    pid: lastResult.pid, drug: lastResult.drug,
+    admin: fmtDateTime(lastResult.adminDate),
+    d0: lastResult.d0,
+    relEff: lastResult.immediate ? "即時" : fmtDateTime(lastResult.relEff),
+    relPhys: lastResult.immediate ? "即時" : fmtDateTime(lastResult.relPhys),
+  });
+  saveLog(log);
+  $("saveBtn").textContent = "保存しました ✓";
+  setTimeout(()=>{ $("saveBtn").textContent="この結果を記録に保存"; }, 1500);
+});
+
+function loadLog(){ try { return JSON.parse(localStorage.getItem(LOG_KEY)) || []; } catch(e){ return []; } }
+function saveLog(log){ try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch(e){} }
+
+function renderLog(){
+  const log = loadLog();
+  const tb = $("logTbl").querySelector("tbody");
+  tb.innerHTML = "";
+  $("logEmpty").style.display = log.length ? "none" : "block";
+  log.forEach(r => {
+    const tr = document.createElement("tr");
+    [r.calcAt, r.pid||"—", r.drug, r.admin, r.d0, r.relEff, r.relPhys].forEach(v => {
+      const td = document.createElement("td"); td.textContent = v; tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+}
+
+$("csvBtn").addEventListener("click", () => {
+  const log = loadLog();
+  const header = ["計算日時","患者ID","薬剤","投与日時","D0(uSv/h)","予測_最短_実効","予測_最長_物理"];
+  const rows = log.map(r => [r.calcAt, r.pid, r.drug, r.admin, r.d0, r.relEff, r.relPhys]);
+  let csv = "﻿" + header.join(",") + "\n"
+    + rows.map(row => row.map(c => {
+        const s = String(c==null?"":c);
+        return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+      }).join(",")).join("\n");
+  const blob = new Blob([csv], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "退出予測記録.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+$("printBtn").addEventListener("click", () => window.print());
+</script>
+</body>
+</html>
