@@ -12,6 +12,8 @@ import { OccupancyTimeline } from './patient/OccupancyTimeline';
 import { printPatientTimeline } from '../utils/printPatientTimeline';
 import { printPatientSchedule } from '../utils/printPatientSchedule';
 import { printMonthlyOccupancy } from '../utils/printMonthlyOccupancy';
+import { printMonthlyCalendar } from '../utils/printMonthlyCalendar';
+import { printPatientList } from '../utils/printPatientList';
 import type { Patient, Cycle, OccupiedSlot, TreatmentInfoMap } from '../shared/contracts/patient';
 
 function PatientManager() {
@@ -635,10 +637,6 @@ function PatientManager() {
     return getOccupiedDates().filter(slot => slot.date === dateStr);
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const handlePrintMonthly = () => {
     printMonthlyOccupancy(
       currentMonth.getFullYear(),
@@ -647,6 +645,20 @@ function PatientManager() {
       cycles,
       TREATMENT_INFO
     );
+  };
+
+  // 月の治療スケジュールをカレンダー形式で印刷（表示中の月）
+  const handlePrintCalendar = () => {
+    printMonthlyCalendar(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() + 1,
+      getTreatmentsForDate
+    );
+  };
+
+  // 登録患者一覧を印刷
+  const handlePrintPatientList = () => {
+    printPatientList(patients, cycles, TREATMENT_INFO);
   };
 
   const handlePrintPatient = (patientId: string) => {
@@ -831,20 +843,30 @@ function PatientManager() {
               <Calendar className="w-6 h-6 text-blue-600" />
               病室占有スケジュール
             </h3>
-            <div className="flex gap-2 no-print">
+            <div className="flex gap-2 no-print flex-wrap">
+              <button
+                onClick={handlePrintCalendar}
+                title="表示中の月の治療スケジュールをカレンダー形式で印刷"
+                className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <Printer className="w-4 h-4" />
+                カレンダー印刷
+              </button>
+              <button
+                onClick={handlePrintPatientList}
+                title="登録患者一覧を印刷"
+                className="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center gap-2"
+              >
+                <Printer className="w-4 h-4" />
+                患者一覧印刷
+              </button>
               <button
                 onClick={handlePrintMonthly}
+                title="その月の入院一覧（表）を印刷"
                 className="px-4 py-2 text-sm rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center gap-2"
               >
                 <Printer className="w-4 h-4" />
-                月次帳票
-              </button>
-              <button
-                onClick={handlePrint}
-                className="px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors flex items-center gap-2"
-              >
-                <Printer className="w-4 h-4" />
-                印刷
+                月次帳票（一覧）
               </button>
               <button
                 onClick={() => setOccupancyView('calendar')}
