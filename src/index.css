@@ -224,4 +224,17 @@
   #occupancy-section .space-y-3 > * + * {
     margin-top: 4px !important;
   }
+
+  /* 登録患者一覧を画面表示のまま印刷（操作ボタン類のみ非表示・外枠を簡素化） */
+  #patient-list-section {
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  #patient-list-section button {
+    display: none !important;
+  }
+  #patient-list-section .space-y-3 > * + * {
+    margin-top: 8px !important;
+  }
 }

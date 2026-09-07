@@ -12,7 +12,6 @@ import { OccupancyTimeline } from './patient/OccupancyTimeline';
 import { printPatientTimeline } from '../utils/printPatientTimeline';
 import { printPatientSchedule } from '../utils/printPatientSchedule';
 import { printMonthlyOccupancy } from '../utils/printMonthlyOccupancy';
-import { printPatientRoster } from '../utils/printPatientRoster';
 import type { Patient, Cycle, OccupiedSlot, TreatmentInfoMap } from '../shared/contracts/patient';
 
 function PatientManager() {
@@ -636,11 +635,11 @@ function PatientManager() {
     return getOccupiedDates().filter(slot => slot.date === dateStr);
   };
 
-  // 「病室占有スケジュール」だけを印刷する。画面表示は変えず、印刷の直前だけ
-  // 他のセクションを一時的に非表示（display:none）にし、印刷後すぐ元に戻す。
+  // 指定セクションだけを画面表示のまま印刷する。印刷の直前だけ他のセクションを
+  // 一時的に非表示（display:none）にし、印刷後すぐ元に戻す。画面には手を加えない。
   // （display:none で高さを詰めるため、余計な空白ページが出ない）
-  const handlePrint = () => {
-    const el = document.getElementById('occupancy-section');
+  const printOnlySection = (sectionId: string) => {
+    const el = document.getElementById(sectionId);
     if (!el) {
       window.print();
       return;
@@ -671,6 +670,8 @@ function PatientManager() {
     setTimeout(restore, 60000);
   };
 
+  const handlePrint = () => printOnlySection('occupancy-section');
+
   const handlePrintMonthly = () => {
     printMonthlyOccupancy(
       currentMonth.getFullYear(),
@@ -681,10 +682,8 @@ function PatientManager() {
     );
   };
 
-  // 登録患者一覧（各患者の全サイクル入り）を1ページに収めて印刷
-  const handlePrintRoster = () => {
-    printPatientRoster(patients, cycles, TREATMENT_INFO);
-  };
+  // 登録患者一覧を、画面表示のまま印刷する（表を作り直さない）
+  const handlePrintRoster = () => printOnlySection('patient-list-section');
 
   const handlePrintPatient = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);

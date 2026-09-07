@@ -346,7 +346,7 @@ export function PatientList({
   if (patients.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div id="patient-list-section" className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xl font-bold text-gray-900">登録患者一覧</h3>
         {onPrintList && (
