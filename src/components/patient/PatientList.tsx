@@ -40,6 +40,7 @@ interface PatientListProps {
   onDelete: (id: string) => void;
   onPrint: (id: string) => void;
   onPrintForPatient: (id: string) => void;
+  onPrintList?: () => void;
   onCycleUpdate: (id: string, update: CycleUpdatePayload, recalculate: boolean) => Promise<void>;
   onCyclePostpone: (id: string, days: number, recalculate: boolean) => Promise<void>;
 }
@@ -297,6 +298,7 @@ export function PatientList({
   onDelete,
   onPrint,
   onPrintForPatient,
+  onPrintList,
   onCycleUpdate,
   onCyclePostpone,
 }: PatientListProps) {
@@ -345,7 +347,19 @@ export function PatientList({
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <h3 className="text-xl font-bold text-gray-900 mb-4">登録患者一覧</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xl font-bold text-gray-900">登録患者一覧</h3>
+        {onPrintList && (
+          <button
+            onClick={onPrintList}
+            title="登録患者一覧（全サイクル）を1ページで印刷"
+            className="px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors flex items-center gap-2 no-print"
+          >
+            <Printer className="w-4 h-4" />
+            一覧を印刷
+          </button>
+        )}
+      </div>
       <div className="space-y-3">
         {patients.map(patient => {
           const info = treatmentInfo[patient.treatment_type];

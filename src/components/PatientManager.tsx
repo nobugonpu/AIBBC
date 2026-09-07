@@ -12,6 +12,7 @@ import { OccupancyTimeline } from './patient/OccupancyTimeline';
 import { printPatientTimeline } from '../utils/printPatientTimeline';
 import { printPatientSchedule } from '../utils/printPatientSchedule';
 import { printMonthlyOccupancy } from '../utils/printMonthlyOccupancy';
+import { printPatientRoster } from '../utils/printPatientRoster';
 import type { Patient, Cycle, OccupiedSlot, TreatmentInfoMap } from '../shared/contracts/patient';
 
 function PatientManager() {
@@ -680,6 +681,11 @@ function PatientManager() {
     );
   };
 
+  // 登録患者一覧（各患者の全サイクル入り）を1ページに収めて印刷
+  const handlePrintRoster = () => {
+    printPatientRoster(patients, cycles, TREATMENT_INFO);
+  };
+
   const handlePrintPatient = (patientId: string) => {
     const patient = patients.find(p => p.id === patientId);
     if (!patient) return;
@@ -851,6 +857,7 @@ function PatientManager() {
         onDelete={deletePatient}
         onPrint={handlePrintPatient}
         onPrintForPatient={handlePrintPatientSchedule}
+        onPrintList={handlePrintRoster}
         onCycleUpdate={updateCycle}
         onCyclePostpone={postponeCycle}
       />
