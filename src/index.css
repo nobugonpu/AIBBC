@@ -138,31 +138,36 @@
   .print-title {
     display: block;
     text-align: center;
-    font-size: 15px;
+    font-size: 19px;
     font-weight: bold;
-    margin: 0 0 6px;
+    margin: 0 0 8px;
     color: #1f2937;
   }
 
-  /* 病室占有スケジュールを1ページに収めるためのコンパクト化（画面表示には影響しない） */
+  /* 病室占有スケジュールを1ページ内で大きく表示（画面表示には影響しない） */
   #occupancy-section {
     padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
   }
 
+  /* 週の行を用紙の高さいっぱいに自動で引き伸ばす（5週でも6週でも1ページで下まで使う） */
   .calendar-grid {
+    height: calc(100vh - 160px);
+    grid-template-rows: min-content;
+    grid-auto-rows: 1fr;
     page-break-inside: avoid;
   }
 
   .calendar-header {
-    padding: 3px 2px;
-    font-size: 10px;
+    padding: 6px 2px;
+    font-size: 13px;
   }
 
   .calendar-day {
-    min-height: 56px;
-    padding: 3px;
+    min-height: 0;
+    padding: 5px;
+    overflow: hidden;
     page-break-inside: avoid;
   }
 
@@ -171,52 +176,52 @@
   }
 
   .calendar-day-number {
-    font-size: 10px;
-    margin-bottom: 1px;
+    font-size: 13px;
+    margin-bottom: 2px;
   }
 
   .holiday-badge {
-    font-size: 8px;
-    padding: 0 2px;
+    font-size: 9px;
+    padding: 1px 3px;
   }
 
   .calendar-treatments {
-    gap: 1px;
+    gap: 2px;
   }
 
   .treatment-item {
-    padding: 1px 3px;
-    font-size: 8px;
-    line-height: 1.15;
-    border-left-width: 2px;
+    padding: 2px 5px;
+    font-size: 10px;
+    line-height: 1.25;
+    border-left-width: 3px;
     page-break-inside: avoid;
   }
 
   .treatment-patient {
-    font-size: 9px;
+    font-size: 11px;
   }
 
   .treatment-type,
   .treatment-cycle {
-    font-size: 7px;
+    font-size: 9px;
   }
 
-  /* カレンダー下の凡例をコンパクトに */
+  /* カレンダー下の凡例（大きめだが1ページに収まる範囲） */
   #occupancy-section .mt-6 {
-    margin-top: 6px !important;
-    padding: 6px 8px !important;
+    margin-top: 8px !important;
+    padding: 8px 10px !important;
   }
   #occupancy-section .mt-6 * {
-    font-size: 9px !important;
+    font-size: 11px !important;
   }
   #occupancy-section .mt-6 .w-4 {
-    width: 10px !important;
-    height: 10px !important;
+    width: 12px !important;
+    height: 12px !important;
   }
   #occupancy-section .mt-4 {
-    margin-top: 4px !important;
+    margin-top: 5px !important;
   }
   #occupancy-section .space-y-3 > * + * {
-    margin-top: 3px !important;
+    margin-top: 4px !important;
   }
 }
