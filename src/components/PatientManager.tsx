@@ -635,8 +635,39 @@ function PatientManager() {
     return getOccupiedDates().filter(slot => slot.date === dateStr);
   };
 
+  // 「病室占有スケジュール」だけを印刷する。画面表示は変えず、印刷の直前だけ
+  // 他のセクションを一時的に非表示（display:none）にし、印刷後すぐ元に戻す。
+  // （display:none で高さを詰めるため、余計な空白ページが出ない）
   const handlePrint = () => {
+    const el = document.getElementById('occupancy-section');
+    if (!el) {
+      window.print();
+      return;
+    }
+    const hidden: { el: HTMLElement; prev: string }[] = [];
+    let node: HTMLElement | null = el;
+    while (node && node !== document.body && node.parentElement) {
+      const parent = node.parentElement;
+      const current = node;
+      Array.from(parent.children).forEach(child => {
+        if (child !== current && child instanceof HTMLElement) {
+          hidden.push({ el: child, prev: child.style.display });
+          child.style.display = 'none';
+        }
+      });
+      node = parent;
+    }
+    let restored = false;
+    const restore = () => {
+      if (restored) return;
+      restored = true;
+      hidden.forEach(h => { h.el.style.display = h.prev; });
+      window.removeEventListener('afterprint', restore);
+    };
+    window.addEventListener('afterprint', restore);
     window.print();
+    // afterprint が発火しない環境向けのフォールバック
+    setTimeout(restore, 60000);
   };
 
   const handlePrintMonthly = () => {
@@ -825,7 +856,7 @@ function PatientManager() {
       />
 
       {occupiedSlots.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div id="occupancy-section" className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <Calendar className="w-6 h-6 text-blue-600" />
