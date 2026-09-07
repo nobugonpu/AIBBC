@@ -123,7 +123,7 @@
 @media print {
   @page {
     size: A4 landscape;
-    margin: 15mm;
+    margin: 8mm;
   }
 
   body {
@@ -138,22 +138,85 @@
   .print-title {
     display: block;
     text-align: center;
-    font-size: 24px;
+    font-size: 15px;
     font-weight: bold;
-    margin-bottom: 20px;
+    margin: 0 0 6px;
     color: #1f2937;
+  }
+
+  /* 病室占有スケジュールを1ページに収めるためのコンパクト化（画面表示には影響しない） */
+  #occupancy-section {
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
   }
 
   .calendar-grid {
     page-break-inside: avoid;
   }
 
+  .calendar-header {
+    padding: 3px 2px;
+    font-size: 10px;
+  }
+
   .calendar-day {
-    min-height: 100px;
+    min-height: 56px;
+    padding: 3px;
     page-break-inside: avoid;
   }
 
+  .calendar-day.today {
+    border-width: 1px;
+  }
+
+  .calendar-day-number {
+    font-size: 10px;
+    margin-bottom: 1px;
+  }
+
+  .holiday-badge {
+    font-size: 8px;
+    padding: 0 2px;
+  }
+
+  .calendar-treatments {
+    gap: 1px;
+  }
+
   .treatment-item {
+    padding: 1px 3px;
+    font-size: 8px;
+    line-height: 1.15;
+    border-left-width: 2px;
     page-break-inside: avoid;
+  }
+
+  .treatment-patient {
+    font-size: 9px;
+  }
+
+  .treatment-type,
+  .treatment-cycle {
+    font-size: 7px;
+  }
+
+  /* カレンダー下の凡例をコンパクトに */
+  #occupancy-section .mt-6 {
+    margin-top: 6px !important;
+    padding: 6px 8px !important;
+  }
+  #occupancy-section .mt-6 * {
+    font-size: 9px !important;
+  }
+  #occupancy-section .mt-6 .w-4 {
+    width: 10px !important;
+    height: 10px !important;
+  }
+  #occupancy-section .mt-4 {
+    margin-top: 4px !important;
+  }
+  #occupancy-section .space-y-3 > * + * {
+    margin-top: 3px !important;
   }
 }
