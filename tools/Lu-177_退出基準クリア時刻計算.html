@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lu-177 退出基準クリア時刻 計算</title>
+<style>
+  :root{--bg:#f4f7fb;--surface:#fff;--surface2:#eef3f9;--ink:#16202e;--soft:#55647c;--faint:#8a99b0;
+    --border:#d9e2ee;--blue:#1f5fbf;--blue-bg:#eef4ff;--green:#0f9d6e;--green-bg:#eafaf3;--green-ink:#0a6b4b;
+    --amber:#b45309;--amber-bg:#fff7ea;--amber-line:#f0c680;--red:#c02626;--red-bg:#fdf0f0;--yellow:#fff6cc;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Yu Gothic","Hiragino Sans","Meiryo",sans-serif;font-size:15px;line-height:1.6}
+  .wrap{max-width:860px;margin:0 auto;padding:0 16px 60px}
+  header{padding:20px 0 12px;border-bottom:3px solid var(--blue);margin-bottom:14px}
+  header h1{font-size:21px;margin:0 0 4px}
+  header .sub{color:var(--soft);font-size:13px}
+  .crit{background:var(--red-bg);border:1px solid #f2b6b6;color:var(--red);border-radius:9px;padding:10px 14px;font-size:12.5px;margin:12px 0}
+  .tabs{display:flex;gap:6px;margin:14px 0}
+  .tabs button{flex:1;padding:9px 8px;border:1px solid var(--border);background:var(--surface);border-radius:9px;font-weight:700;cursor:pointer;font-size:14px;color:var(--soft)}
+  .tabs button.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 8px 20px rgba(16,24,40,.05);margin-bottom:14px}
+  .card h2{font-size:15px;margin:0 0 10px;color:var(--blue);border-bottom:1px solid var(--border);padding-bottom:6px}
+  label{display:block;font-size:12.5px;font-weight:700;margin:10px 0 3px}
+  input,select{width:100%;padding:9px 10px;border:1px solid #c9d4e2;border-radius:8px;font-size:15px;background:var(--yellow)}
+  input:focus,select:focus{outline:2px solid var(--blue);outline-offset:0}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  @media(max-width:560px){.row,.row3{grid-template-columns:1fr}}
+  .btn{margin-top:14px;padding:11px 16px;border:none;border-radius:9px;background:var(--blue);color:#fff;font-weight:700;font-size:15px;cursor:pointer}
+  .btn.sub{background:var(--surface2);color:var(--ink);border:1px solid var(--border)}
+  .btns{display:flex;flex-wrap:wrap;gap:8px}
+  .err{background:var(--red-bg);border:1px solid #f2b6b6;color:var(--red);border-radius:8px;padding:9px 12px;font-size:13px;margin-top:10px;display:none}
+  .err.show{display:block}
+  .result{margin-top:14px;display:none}
+  .result.show{display:block}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0}
+  @media(max-width:560px){.grid2{grid-template-columns:1fr}}
+  .box{border:1px solid var(--border);border-radius:10px;padding:12px}
+  .box .k{font-size:12px;color:var(--soft);font-weight:700}
+  .box .v{font-size:20px;font-weight:700;margin-top:3px}
+  .box.teff{background:var(--blue-bg)} .box.teff .v{color:var(--blue)}
+  .box.clear{background:var(--green-bg)} .box.clear .v{color:var(--green-ink)}
+  .verdict{border-radius:10px;padding:12px;font-weight:700;text-align:center;margin:8px 0}
+  .verdict.today{background:var(--green-bg);color:var(--green-ink);border:1px solid #a7e3cd}
+  .verdict.next{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-line)}
+  .verdict.done{background:var(--blue-bg);color:var(--blue);border:1px solid #b9d0f5}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+  th,td{border:1px solid var(--border);padding:5px 8px;text-align:center}
+  th{background:var(--surface2);color:var(--soft);font-size:12px}
+  canvas{width:100%;height:260px;border:1px solid var(--border);border-radius:8px;background:#fff;margin-top:6px}
+  textarea{width:100%;height:150px;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:12.5px;font-family:Consolas,monospace}
+  .muted{color:var(--soft);font-size:12.5px}
+  .pane{display:none}.pane.active{display:block}
+  .warn{background:var(--amber-bg);border:1px solid var(--amber-line);color:var(--amber);border-radius:8px;padding:9px 12px;font-size:12.5px;margin-top:8px}
+  .note{font-size:12px;color:var(--soft);margin-top:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Lu-177 退出基準クリア時刻 計算</h1>
+    <div class="sub">投与後の1m線量率2点から全身実効半減期を求め、退出基準を下回る時刻を予測します</div>
+  </header>
+
+  <div class="crit">
+    ⚠ 本アプリは<strong>測定支援・予測用</strong>です。実際の退出可否は、<strong>毎回の実測</strong>と、<strong>放射線安全管理責任者・医師の判断</strong>によります。T_eff は投与初期（速い排泄相）の値であり、<strong>数日先の外挿には使わない</strong>でください。
+  </div>
+
+  <div class="tabs">
+    <button data-tab="calc" class="active">計算</button>
+    <button data-tab="log">記録</button>
+    <button data-tab="about">説明</button>
+  </div>
+
+  <!-- 計算 -->
+  <div class="pane active" id="pane-calc">
+    <div class="card">
+      <h2>基本情報</h2>
+      <div class="row3">
+        <div><label>患者ID</label><input id="pid" type="text" placeholder="例：P-001"></div>
+        <div><label>サイクル（第○回）</label><input id="cycle" type="number" min="1" placeholder="例：1"></div>
+        <div><label>薬剤</label>
+          <select id="drug">
+            <option value="pluvicto">プルヴィクト（16 μSv/h）</option>
+            <option value="lutathera">ルタテラ（18 μSv/h）</option>
+          </select>
+        </div>
+      </div>
+      <div class="row3">
+        <div><label>投与放射能 [GBq]</label><input id="gbq" type="number" step="0.01" min="0" placeholder="例：7.41"></div>
+        <div><label>投与日時</label><input id="admin" type="datetime-local"></div>
+        <div><label>退出基準しきい値 X_th [μSv/h]</label><input id="xth" type="number" step="0.1" min="0.1"></div>
+      </div>
+      <div class="note">しきい値は薬剤選択で自動設定されます（手動上書き可）。</div>
+    </div>
+
+    <div class="card">
+      <h2>測定1（投与直後）</h2>
+      <div class="row">
+        <div><label>測定日時</label><input id="t1" type="datetime-local"></div>
+        <div><label>1m線量率 X1 [μSv/h]</label><input id="x1" type="number" step="0.1" min="0" placeholder="例：17.2"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>測定2（退出基準測定・既定は翌日13:00／当日も可）</h2>
+      <div class="row">
+        <div><label>測定日時</label><input id="t2" type="datetime-local"></div>
+        <div><label>1m線量率 X2 [μSv/h]</label><input id="x2" type="number" step="0.1" min="0" placeholder="例：12.6"></div>
+      </div>
+      <label>排尿回数（任意メモ）</label><input id="urine" type="text" placeholder="例：3回">
+      <div class="note">測定2が未入力のときは、下の「予測モード」用の実効半減期があれば事前予測します。</div>
+    </div>
+
+    <div class="card">
+      <h2>予測モード（測定2の代わり・任意）</h2>
+      <label>前回までに求めた実効半減期 T_eff [h]</label>
+      <input id="teffKnown" type="number" step="0.1" min="0.1" placeholder="測定2が無いとき、これで事前予測">
+      <div class="note">測定2があればそちら（実測2点）を優先します。</div>
+    </div>
+
+    <div class="btns">
+      <button class="btn" id="calcBtn">計算する</button>
+      <button class="btn sub" id="sampleBtn">サンプル読込（検証用）</button>
+      <button class="btn sub" id="saveBtn" style="display:none">記録に保存</button>
+      <button class="btn sub" id="resetBtn">クリア</button>
+    </div>
+    <div class="err" id="err"></div>
+
+    <div class="result" id="result">
+      <div class="card">
+        <h2 id="rmode">結果</h2>
+        <div class="verdict" id="verdict"></div>
+        <div class="grid2">
+          <div class="box teff"><div class="k">全身 実効半減期 T_eff</div><div class="v" id="rteff">—</div></div>
+          <div class="box clear"><div class="k">退出基準クリア（予測）時刻</div><div class="v" id="rclear">—</div></div>
+        </div>
+        <div class="muted" id="rclear2"></div>
+        <div class="warn" id="rnote"></div>
+      </div>
+
+      <div class="card">
+        <h2>減衰曲線</h2>
+        <canvas id="graph" width="800" height="260"></canvas>
+        <div class="muted">横軸＝測定1からの経過時間(h)、縦軸＝1m線量率(μSv/h)。破線＝退出基準しきい値。●＝クリア時刻。</div>
+      </div>
+
+      <div class="card">
+        <h2>推定線量率テーブル（測定1からの経過）</h2>
+        <table id="tbl"><thead><tr><th>経過</th><th>0h（投与直後）</th><th>2h</th><th>4h</th><th>6h</th><th>24h</th></tr></thead>
+          <tbody><tr id="tblrow"></tr></tbody></table>
+      </div>
+
+      <div class="card">
+        <h2>記録用テキスト</h2>
+        <textarea id="rectext" readonly></textarea>
+        <div class="btns"><button class="btn sub" id="copyBtn">コピー</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 記録 -->
+  <div class="pane" id="pane-log">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong>計算記録</strong>
+        <span class="btns" style="margin:0">
+          <button class="btn sub" id="csvBtn" style="margin:0;padding:7px 12px;font-size:13px">CSVで保存</button>
+          <button class="btn sub" id="clearLogBtn" style="margin:0;padding:7px 12px;font-size:13px">全削除</button>
+        </span>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="logTbl">
+          <thead><tr><th>計算日時</th><th>患者ID</th><th>ｻｲｸﾙ</th><th>薬剤</th><th>X_th</th><th>T_eff[h]</th><th>クリア時刻</th><th>判定</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="muted" id="logEmpty">まだ記録がありません。</p>
+      <p class="muted">※ 記録はこの端末（ブラウザ）内にのみ保存されます。定期的にCSVで書き出してください。</p>
+    </div>
+  </div>
+
+  <!-- 説明 -->
+  <div class="pane" id="pane-about">
+    <div class="card">
+      <h2>計算式（単一指数の外部線量率減衰を仮定）</h2>
+      <p class="muted" style="font-size:13px;line-height:1.7">
+        2点の測定 (t1,X1) (t2,X2)（時間h・X=1m線量率）から：<br>
+        ・λ = ln(X1 ÷ X2) ÷ (t2 − t1)<br>
+        ・全身実効半減期 T_eff = ln2 ÷ λ<br>
+        ・クリア時刻 t_clear = t1 + ln(X1 ÷ X_th) ÷ λ<br>
+        ・測定時点で X ≤ X_th ならクリア済みと判定し、遡って推定表示。<br>
+        ・予測モード：測定1のみ＋既知T_eff（λ = ln2 ÷ T_eff）で事前予測。
+      </p>
+      <h2 style="margin-top:14px">判定の基準</h2>
+      <p class="muted" style="font-size:13px">クリア時刻が<strong>投与当日の日勤時間（8:30〜17:00）内</strong>なら「当日測定でクリア見込み」、そうでなければ「翌日13:00測定を推奨」と表示します。</p>
+      <h2 style="margin-top:14px">薬剤プリセット（退出基準＝1m線量率しきい値）</h2>
+      <p class="muted" style="font-size:13px">プルヴィクト：16 μSv/h ／ ルタテラ：18 μSv/h（手動上書き可）</p>
+      <h2 style="margin-top:14px">注意</h2>
+      <p class="muted" style="font-size:13px">本アプリは測定支援・予測用。実際の退出可否は毎回の実測と放射線安全管理責任者・医師の判断による。T_effは投与初期（速い排泄相）の値であり、数日先の外挿には使わない。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const DRUGS = {
+  pluvicto:  { name: "プルヴィクト", threshold: 16 },
+  lutathera: { name: "ルタテラ",     threshold: 18 },
+};
+const LN2 = Math.log(2);
+const LOG_KEY = "lu177_clear_log_v1";
+const DAY_START = 8.5, DAY_END = 17.0; // 日勤時間（時）
+const $ = id => document.getElementById(id);
+
+// タブ
+document.querySelectorAll(".tabs button").forEach(b => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".tabs button").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    document.querySelectorAll(".pane").forEach(p => p.classList.remove("active"));
+    $("pane-" + b.dataset.tab).classList.add("active");
+    if (b.dataset.tab === "log") renderLog();
+  });
+});
+
+// 薬剤変更でしきい値プリセット
+$("drug").addEventListener("change", () => { $("xth").value = DRUGS[$("drug").value].threshold; });
+$("xth").value = DRUGS[$("drug").value].threshold;
+
+function hoursBetween(a, b) { return (b.getTime() - a.getTime()) / 3600000; }
+function parseDT(s) { if (!s) return null; const d = new Date(s); return isNaN(d.getTime()) ? null : d; }
+const p2 = n => String(n).padStart(2, "0");
+function fmtDT(d) { return d.getFullYear()+"/"+p2(d.getMonth()+1)+"/"+p2(d.getDate())+" "+p2(d.getHours())+":"+p2(d.getMinutes()); }
+function fmtHM(d){ return p2(d.getHours())+":"+p2(d.getMinutes()); }
+function addHours(d, h) { return new Date(d.getTime() + h*3600000); }
+function round(x, n){ const f=Math.pow(10,n); return Math.round(x*f)/f; }
+
+function showErr(m){ const e=$("err"); e.textContent=m; e.classList.add("show"); $("result").classList.remove("show"); $("saveBtn").style.display="none"; }
+function clearErr(){ $("err").classList.remove("show"); }
+
+let last = null;
+
+$("calcBtn").addEventListener("click", () => {
+  clearErr();
+  const drug = DRUGS[$("drug").value];
+  const xth = parseFloat($("xth").value);
+  const admin = parseDT($("admin").value);
+  const t1 = parseDT($("t1").value);
+  const x1 = parseFloat($("x1").value);
+  const t2 = parseDT($("t2").value);
+  const x2 = parseFloat($("x2").value);
+  const teffKnown = parseFloat($("teffKnown").value);
+
+  if (!(xth > 0)) return showErr("退出基準しきい値 X_th を正しく入力してください。");
+  if (!t1) return showErr("測定1の日時を入力してください。");
+  if (!(x1 > 0)) return showErr("測定1の線量率 X1 は 0 より大きい値を入力してください。");
+
+  let lambda, mode, teff;
+  const has2 = t2 && isFinite(x2);
+  if (has2) {
+    if (!(x2 > 0)) return showErr("測定2の線量率 X2 は 0 より大きい値を入力してください。");
+    const dt = hoursBetween(t1, t2);
+    if (!(dt > 0)) return showErr("測定2の日時は測定1より後にしてください（t2 > t1）。");
+    if (x2 >= x1) return showErr("測定2の線量率が測定1以上です（減衰していません）。測定値・日時をご確認ください。");
+    lambda = Math.log(x1 / x2) / dt;
+    teff = LN2 / lambda;
+    mode = "measured";
+  } else if (isFinite(teffKnown) && teffKnown > 0) {
+    lambda = LN2 / teffKnown;
+    teff = teffKnown;
+    mode = "predict";
+  } else {
+    return showErr("測定2（日時・X2）を入力するか、予測モードの実効半減期 T_eff を入力してください。");
+  }
+
+  // クリア時刻
+  const dtClear = Math.log(x1 / xth) / lambda; // 測定1からの経過h（負ならクリア済み）
+  const clearDate = addHours(t1, dtClear);
+  const alreadyBelow = x1 <= xth;
+
+  last = { drug: drug.name, drugKey: $("drug").value, xth, admin, t1, x1, t2: has2 ? t2 : null, x2: has2 ? x2 : null,
+           urine: $("urine").value.trim(), pid: $("pid").value.trim(), cycle: $("cycle").value.trim(),
+           gbq: $("gbq").value.trim(), lambda, teff, dtClear, clearDate, alreadyBelow, mode };
+
+  renderResult(last);
+  $("saveBtn").style.display = "inline-block";
+});
+
+function verdict(r) {
+  // 判定：クリア時刻が投与当日の日勤時間内なら当日、そうでなければ翌日推奨
+  if (r.alreadyBelow) return { cls: "done", text: "投与直後からしきい値以下 → クリア済み（推定 " + fmtDT(r.clearDate) + "）" };
+  const baseDay = r.admin || r.t1;
+  const sameDay = r.clearDate.getFullYear()===baseDay.getFullYear() && r.clearDate.getMonth()===baseDay.getMonth() && r.clearDate.getDate()===baseDay.getDate();
+  const hour = r.clearDate.getHours() + r.clearDate.getMinutes()/60;
+  if (sameDay && hour >= DAY_START && hour <= DAY_END)
+    return { cls: "today", text: "当日測定でクリア見込み（" + fmtDT(r.clearDate) + "）" };
+  return { cls: "next", text: "翌日13:00測定を推奨（クリア予測 " + fmtDT(r.clearDate) + "）" };
+}
+
+function renderResult(r) {
+  $("rmode").textContent = r.mode === "measured" ? "結果（実測2点）" : "結果（予測モード：既知T_eff）";
+  const v = verdict(r);
+  const vd = $("verdict"); vd.className = "verdict " + v.cls; vd.textContent = v.text;
+  $("rteff").textContent = round(r.teff, 1) + " 時間";
+  if (r.alreadyBelow) {
+    $("rclear").textContent = "クリア済み";
+    $("rclear2").textContent = "推定クリア時刻：" + fmtDT(r.clearDate) + "（測定1の " + round(-r.dtClear,1) + " 時間前）";
+  } else {
+    $("rclear").textContent = fmtDT(r.clearDate);
+    $("rclear2").textContent = "測定1から約 " + round(r.dtClear,1) + " 時間後" + (r.admin ? "" : "");
+  }
+  $("rnote").textContent = "T_eff は投与初期の値です。数日先の外挿には使わないでください。退出可否は実測・医師判断で確定します。";
+
+  // テーブル
+  const offs = [0,2,4,6,24];
+  $("tblrow").innerHTML = "<td><b>線量率</b></td>" + offs.map(h => {
+    const x = r.x1 * Math.exp(-r.lambda * h);
+    return "<td>" + round(x,1) + "</td>";
+  }).join("");
+
+  drawGraph(r);
+  $("rectext").value = recordText(r);
+  $("result").classList.add("show");
+}
+
+function drawGraph(r) {
+  const c = $("graph"); const dpr = window.devicePixelRatio || 1;
+  const W = c.clientWidth, H = 260;
+  c.width = W*dpr; c.height = H*dpr;
+  const ctx = c.getContext("2d"); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+  const padL=44, padR=14, padT=14, padB=28;
+  const plotW = W-padL-padR, plotH = H-padT-padB;
+  // 横軸最大：クリア時刻＋余裕、最低12h、最大72h
+  const tMax = Math.max(12, Math.min(72, (r.dtClear>0? r.dtClear:0)*1.4 + 6));
+  const yMax = Math.max(r.x1, r.xth) * 1.15;
+  const X = t => padL + (t/tMax)*plotW;
+  const Y = y => padT + (1 - y/yMax)*plotH;
+  // 軸
+  ctx.strokeStyle="#cbd5e1"; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,padT+plotH); ctx.lineTo(padL+plotW,padT+plotH); ctx.stroke();
+  ctx.fillStyle="#64748b"; ctx.font="10px sans-serif"; ctx.textAlign="right"; ctx.textBaseline="middle";
+  for(let i=0;i<=4;i++){ const y=yMax*i/4; const py=Y(y); ctx.fillText(round(y,0), padL-5, py);
+    ctx.strokeStyle="#eef2f7"; ctx.beginPath(); ctx.moveTo(padL,py); ctx.lineTo(padL+plotW,py); ctx.stroke(); }
+  ctx.textAlign="center"; ctx.textBaseline="top";
+  for(let t=0;t<=tMax;t+=Math.ceil(tMax/8)){ ctx.fillStyle="#64748b"; ctx.fillText(t+"h", X(t), padT+plotH+5); }
+  // しきい値線
+  ctx.strokeStyle="#c02626"; ctx.setLineDash([5,4]); ctx.beginPath(); ctx.moveTo(padL,Y(r.xth)); ctx.lineTo(padL+plotW,Y(r.xth)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle="#c02626"; ctx.textAlign="left"; ctx.fillText("しきい値 "+round(r.xth,0), padL+3, Y(r.xth)-2);
+  // 減衰曲線
+  ctx.strokeStyle="#1f5fbf"; ctx.lineWidth=2; ctx.beginPath();
+  for(let px=0;px<=plotW;px++){ const t=(px/plotW)*tMax; const x=r.x1*Math.exp(-r.lambda*t); const py=Y(x);
+    if(px===0)ctx.moveTo(padL+px,py); else ctx.lineTo(padL+px,py); }
+  ctx.stroke();
+  // クリア点
+  if(r.dtClear>0 && r.dtClear<=tMax){ ctx.fillStyle="#0f9d6e"; ctx.beginPath(); ctx.arc(X(r.dtClear),Y(r.xth),4,0,7); ctx.fill();
+    ctx.fillStyle="#0a6b4b"; ctx.textAlign="center"; ctx.textBaseline="bottom"; ctx.fillText("クリア "+round(r.dtClear,1)+"h", X(r.dtClear), Y(r.xth)-6); }
+}
+
+function recordText(r) {
+  const L = [];
+  L.push("■ Lu-177 退出基準クリア時刻 計算");
+  L.push("患者ID: "+(r.pid||"—")+" / サイクル: 第"+(r.cycle||"—")+"回 / 薬剤: "+r.drug);
+  if(r.gbq) L.push("投与放射能: "+r.gbq+" GBq" + (r.admin? " / 投与: "+fmtDT(r.admin):""));
+  L.push("退出基準しきい値 X_th: "+r.xth+" μSv/h");
+  L.push("測定1: "+fmtDT(r.t1)+" / "+r.x1+" μSv/h");
+  if(r.t2) L.push("測定2: "+fmtDT(r.t2)+" / "+r.x2+" μSv/h");
+  if(r.urine) L.push("排尿回数: "+r.urine);
+  L.push("モード: "+(r.mode==="measured"?"実測2点":"予測（既知T_eff）"));
+  L.push("全身実効半減期 T_eff: "+round(r.teff,1)+" h");
+  if(r.alreadyBelow) L.push("判定: 投与直後からしきい値以下（クリア済み・推定 "+fmtDT(r.clearDate)+"）");
+  else { L.push("退出基準クリア（予測）: "+fmtDT(r.clearDate)+"（測定1から約"+round(r.dtClear,1)+"h後）");
+    L.push("判定: "+verdict(r).text); }
+  L.push("※測定支援・予測用。退出可否は実測と放射線安全管理責任者・医師の判断による。");
+  return L.join("\n");
+}
+
+$("copyBtn").addEventListener("click", () => { $("rectext").select(); try{document.execCommand("copy");}catch(e){} });
+
+// サンプル読込（検証用）
+$("sampleBtn").addEventListener("click", () => {
+  const d = new Date(); const ymd = d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());
+  $("drug").value = "pluvicto"; $("xth").value = 16;
+  $("pid").value = "サンプル"; $("cycle").value = "1"; $("gbq").value = "7.41";
+  $("admin").value = ymd+"T09:00";
+  $("t1").value = ymd+"T09:05"; $("x1").value = "17.2";
+  $("t2").value = ymd+"T16:30"; $("x2").value = "12.6";
+  $("urine").value = ""; $("teffKnown").value = "";
+  clearErr(); $("calcBtn").click();
+});
+
+$("resetBtn").addEventListener("click", () => {
+  ["pid","cycle","gbq","admin","t1","x1","t2","x2","urine","teffKnown"].forEach(id=>$(id).value="");
+  $("xth").value = DRUGS[$("drug").value].threshold;
+  $("result").classList.remove("show"); $("saveBtn").style.display="none"; clearErr();
+});
+
+// 記録保存
+$("saveBtn").addEventListener("click", () => {
+  if(!last) return;
+  const log = loadLog();
+  log.unshift({
+    at: fmtDT(new Date()), pid: last.pid, cycle: last.cycle, drug: last.drug, xth: last.xth,
+    teff: round(last.teff,1), clear: last.alreadyBelow ? "クリア済み" : fmtDT(last.clearDate),
+    verdict: verdict(last).text, x1: last.x1, x2: last.x2, mode: last.mode==="measured"?"実測2点":"予測"
+  });
+  saveLog(log);
+  $("saveBtn").textContent="保存しました ✓"; setTimeout(()=>{$("saveBtn").textContent="記録に保存";},1500);
+});
+function loadLog(){ try{return JSON.parse(localStorage.getItem(LOG_KEY))||[];}catch(e){return [];} }
+function saveLog(l){ try{localStorage.setItem(LOG_KEY,JSON.stringify(l));}catch(e){} }
+function renderLog(){
+  const log = loadLog(); const tb = $("logTbl").querySelector("tbody"); tb.innerHTML="";
+  $("logEmpty").style.display = log.length? "none":"block";
+  log.forEach(r=>{ const tr=document.createElement("tr");
+    [r.at,r.pid||"—",r.cycle||"—",r.drug,r.xth,r.teff,r.clear,r.verdict].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);});
+    tb.appendChild(tr); });
+}
+$("clearLogBtn").addEventListener("click", () => { if(confirm("記録をすべて削除しますか？")){ saveLog([]); renderLog(); } });
+$("csvBtn").addEventListener("click", () => {
+  const log = loadLog();
+  const head=["計算日時","患者ID","サイクル","薬剤","X_th","X1","X2","モード","T_eff[h]","クリア時刻","判定"];
+  const rows=log.map(r=>[r.at,r.pid,r.cycle,r.drug,r.xth,r.x1,r.x2,r.mode,r.teff,r.clear,r.verdict]);
+  let csv="﻿"+head.join(",")+"\n"+rows.map(row=>row.map(c=>{const s=String(c==null?"":c);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(",")).join("\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="退出基準クリア記録.csv"; a.click(); URL.revokeObjectURL(a.href);
+});
+
+window.addEventListener("resize", () => { if(last && $("result").classList.contains("show")) drawGraph(last); });
+</script>
+</body>
+</html>
