@@ -136,6 +136,7 @@
           <div class="box clear"><div class="k">退出基準クリア（予測）時刻</div><div class="v" id="rclear">—</div></div>
         </div>
         <div class="muted" id="rclear2"></div>
+        <div class="box" id="halflives" style="margin-top:8px;font-size:13px;line-height:1.8"></div>
         <div class="warn" id="rnote"></div>
       </div>
 
@@ -209,6 +210,7 @@ const DRUGS = {
   lutathera: { name: "ルタテラ",     threshold: 18 },
 };
 const LN2 = Math.log(2);
+const T_PHYS_H = 6.647 * 24; // Lu-177 物理半減期（時間）= 159.53h
 const LOG_KEY = "lu177_clear_log_v1";
 const DAY_START = 8.5, DAY_END = 17.0; // 日勤時間（時）
 const $ = id => document.getElementById(id);
@@ -312,6 +314,17 @@ function renderResult(r) {
   }
   $("rnote").textContent = "T_eff は投与初期の値です。数日先の外挿には使わないでください。退出可否は実測・医師判断で確定します。";
 
+  // 物理・実効・生物学的半減期の関係
+  const invBio = 1 / r.teff - 1 / T_PHYS_H;
+  const tbio = invBio > 0 ? 1 / invBio : null;
+  r.tbio = tbio;
+  $("halflives").innerHTML =
+    "<b>三半減期の関係</b>（1/T実効 = 1/T物理 + 1/T生物）<br>"
+    + "・物理半減期 T物理：<b>" + round(T_PHYS_H,1) + " h</b>（6.647日・固定）<br>"
+    + "・実効半減期 T実効：<b>" + round(r.teff,1) + " h</b>（" + (r.mode==="measured"?"実測2点":"予測") + "）<br>"
+    + "・生物学的半減期 T生物（逆算）：<b>"
+    + (tbio!=null ? round(tbio,1) + " h" : "算出不可（実効が物理以上）") + "</b>";
+
   // テーブル
   const offs = [0,2,4,6,24];
   $("tblrow").innerHTML = "<td><b>線量率</b></td>" + offs.map(h => {
@@ -368,7 +381,9 @@ function recordText(r) {
   if(r.t2) L.push("測定2: "+fmtDT(r.t2)+" / "+r.x2+" μSv/h");
   if(r.urine) L.push("排尿回数: "+r.urine);
   L.push("モード: "+(r.mode==="measured"?"実測2点":"予測（既知T_eff）"));
+  L.push("物理半減期 T物理: "+round(T_PHYS_H,1)+" h（6.647日・固定）");
   L.push("全身実効半減期 T_eff: "+round(r.teff,1)+" h");
+  L.push("生物学的半減期 T生物（逆算）: "+(r.tbio!=null?round(r.tbio,1)+" h":"算出不可")+"　※1/T実効=1/T物理+1/T生物");
   if(r.alreadyBelow) L.push("判定: 投与直後からしきい値以下（クリア済み・推定 "+fmtDT(r.clearDate)+"）");
   else { L.push("退出基準クリア（予測）: "+fmtDT(r.clearDate)+"（測定1から約"+round(r.dtClear,1)+"h後）");
     L.push("判定: "+verdict(r).text); }
