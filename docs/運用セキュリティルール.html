@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lu-177治療患者スケジューラ 運用セキュリティ・ルール</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+  :root{--bg:#f5f8fc;--surface:#fff;--surface-2:#eef3f9;--ink:#16202e;--soft:#55647c;--faint:#8a99b0;
+    --border:#e2e9f1;--blue:#1f5fbf;--blue-bg:#eef4ff;--green:#0f9d6e;--green-bg:#eafaf3;--green-ink:#0a6b4b;
+    --amber:#b45309;--amber-bg:#fff7ea;--amber-line:#f0c680;--red:#c02626;--red-bg:#fdf0f0;--red-line:#f2b6b6;}
+  @media(prefers-color-scheme:dark){:root{--bg:#0d1420;--surface:#151d2b;--surface-2:#1c2637;--ink:#e7edf6;--soft:#a7b4c9;
+    --faint:#6c7b93;--border:#263143;--blue:#6b9bff;--blue-bg:#16233c;--green:#35d39c;--green-bg:#10281f;--green-ink:#86efc5;
+    --amber:#f6be5f;--amber-bg:#2a2012;--amber-line:#5a4520;--red:#f78a8a;--red-bg:#2a1618;--red-line:#59292b;}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic","Meiryo",sans-serif;font-size:13px;line-height:1.55}
+  .wrap{max-width:820px;margin:0 auto;padding:0 20px 40px}
+  header.mast{padding:22px 0 10px;border-bottom:3px solid var(--blue);margin-bottom:10px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--blue);background:var(--blue-bg);padding:3px 11px;border-radius:999px;display:inline-block}
+  header.mast h1{font-size:21px;font-weight:700;margin:10px 0 3px}
+  header.mast .meta{color:var(--soft);font-size:12px}
+  h2{font-size:14.5px;font-weight:700;margin:16px 0 7px;padding-bottom:5px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center}
+  h2 .n{font-size:11px;color:#fff;background:var(--blue);min-width:21px;height:21px;border-radius:5px;display:inline-grid;place-items:center;font-weight:700}
+  ul{margin:5px 0;padding-left:20px} li{margin:3px 0}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.cols{grid-template-columns:1fr}}
+  .note{border-radius:9px;padding:9px 13px;margin:9px 0;border:1px solid var(--border);font-size:12.5px}
+  .note.ok{background:var(--green-bg);border-color:color-mix(in srgb,var(--green) 30%,transparent);color:var(--green-ink)}
+  .note.warn{background:var(--amber-bg);border-color:var(--amber-line);color:var(--amber)}
+  .note.crit{background:var(--red-bg);border-color:var(--red-line);color:var(--red)}
+  .note .lbl{font-weight:700;margin-bottom:2px}
+  .chk{list-style:none;padding-left:0}
+  .chk li{padding-left:22px;position:relative}
+  .chk li::before{content:"☐";position:absolute;left:0;font-size:14px}
+  .bad{color:var(--red);font-weight:700}
+  .good{color:var(--green-ink);font-weight:700}
+  footer{margin-top:18px;padding-top:10px;border-top:1px solid var(--border);color:var(--faint);font-size:11px;text-align:center}
+  @media print{body{background:#fff;color:#000;font-size:10pt}.wrap{max-width:none;padding:0}.note,.cols{page-break-inside:avoid}h2{page-break-after:avoid}@page{size:A4;margin:12mm}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="mast">
+    <span class="eyebrow">ルタテラWG 運用ルール</span>
+    <h1>Lu-177治療患者スケジューラ 運用セキュリティ・ルール</h1>
+    <div class="meta">患者情報を守るための、日々の取り扱いルールです。／作成：RI室　〔　年　月　日〕</div>
+  </header>
+
+  <div class="note ok">
+    <div class="lbl">このアプリが守っていること</div>
+    保存データは <b>AES-256で暗号化</b>（SQLCipher）。<b>外部・クラウドへ一切通信しません</b>（完全オフライン）。<b>利用者ごとの個人認証</b>と<b>改ざん不可の操作履歴</b>、<b>15分無操作で自動ロック</b>。
+    → PCが盗難されても、暗号化ファイル（data.db）だけでは中身は読めません。
+  </div>
+
+  <div class="cols">
+    <div>
+      <h2><span class="n">1</span>毎日の基本ルール</h2>
+      <ul>
+        <li><b>離席時は必ずロック</b>（アプリの「ロック」＋ Windowsは <b>Win+L</b>）。</li>
+        <li><b>画面を他人に見られない</b>位置・向きで操作する。</li>
+        <li>作業が終わったら<b>アプリを閉じる</b>。</li>
+        <li>使用端末（親機）は<b>決まった場所で施錠管理</b>。</li>
+      </ul>
+
+      <h2><span class="n">2</span>パスワード</h2>
+      <ul>
+        <li><b>個人ごとのパスワード</b>を使う（共有・貸し借りしない）。</li>
+        <li><b>付箋・共有メモに書かない</b>。推測されにくいものにする。</li>
+        <li>初期パスワードは<b>初回ログイン後すぐ変更</b>。</li>
+        <li>退職・異動者のアカウントは<b>管理者が速やかに削除</b>。</li>
+      </ul>
+    </div>
+    <div>
+      <h2><span class="n">3</span>書き出し物（PDF・CSV・印刷）の扱い ★重要</h2>
+      <ul>
+        <li>PDF・CSV・印刷物には<b>患者情報が“平文”で入ります</b>（暗号化されません）。</li>
+        <li>可能なら<b>患者ID中心で運用</b>し、<b>氏名入りの書き出しを最小化</b>。</li>
+        <li>氏名入りPDF/CSVを<b>OneDrive・個人の共有フォルダ・メール</b>で広く出さない。</li>
+        <li>共有する場合は<b>アクセス権限を限定した場所</b>／<b>紙の手渡し</b>で。</li>
+        <li>不要になった印刷物は<b>シュレッダー廃棄</b>。</li>
+      </ul>
+
+      <h2><span class="n">4</span>バックアップ・端末</h2>
+      <ul>
+        <li>データ（<code>data.db</code>）は<b>定期バックアップ</b>。保管場所は<b>権限管理</b>し、パスワードと別管理。</li>
+        <li>PCは <b>BitLocker（ディスク暗号化）</b>・ウイルス対策・OS更新を有効に（医療情報部の管理下）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note crit">
+    <div class="lbl">やってはいけないこと</div>
+    <span class="bad">× 氏名入りPDF/CSVをOneDrive等の同期・個人共有に置く　× data.db を同期フォルダに置く（破損＋流出リスク）　× パスワードの共有・付箋　× アプリを開いたまま離席</span>
+  </div>
+
+  <h2><span class="n">5</span>いま一番効く対策（まとめ）</h2>
+  <div class="note warn">
+    現状の最大リスクは「<b>氏名入りPDFを共有（同期）フォルダに置くこと</b>」です。<b>①患者ID中心にする／氏名入りは紙 or 権限限定の場所に限る</b>、<b>②離席時ロック</b> の2つで、漏洩リスクは大きく下がります。
+  </div>
+
+  <h2><span class="n">6</span>本格対応（将来）</h2>
+  <ul>
+    <li>患者データは<b>医療情報部管理の正規ファイルサーバー（アクセス権限つき）</b>に置くのが本来の姿。端末ローカル保管より組織的に管理でき安全。</li>
+    <li>全員のアプリで同時共有したい場合も、<b>OneDrive同期ではなくファイルサーバー共有</b>が必要（医療情報部に相談）。</li>
+  </ul>
+
+  <h2><span class="n">7</span>日次チェックリスト</h2>
+  <ul class="chk">
+    <li>離席時・終業時に<b>ロック／終了</b>した</li>
+    <li>氏名入りの書き出し物を<b>不用意な場所に置いていない</b></li>
+    <li>印刷物の<b>置きっぱなし・放置がない</b>（不要分は廃棄）</li>
+    <li>（週1）<b>バックアップを取得</b>した</li>
+  </ul>
+
+  <footer>Lu-177治療患者スケジューラ 運用セキュリティ・ルール（ルタテラWG）／院内配布・印刷・PDF保存が可能です。</footer>
+</div>
+</body>
+</html>
